@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Melon Sandbox — Play</title>
+  <meta name="description" content="Play Melon Sandbox — a free browser 2D ragdoll physics sandbox. Spawn, shoot, explode." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+/* ─── RESET ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #0d0d0f;
+  --surface: #14141a;
+  --panel:   #1a1a24;
+  --border:  rgba(255,255,255,0.08);
+  --green:   #4ade80;
+  --orange:  #fb923c;
+  --red:     #f87171;
+  --yellow:  #fbbf24;
+  --cyan:    #22d3ee;
+  --purple:  #a78bfa;
+  --text:    #f0f0f5;
+  --muted:   #8888aa;
+  --font-px: 'Press Start 2P', monospace;
+  --font-ui: 'Outfit', sans-serif;
+}
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:var(--font-ui); }
+
+/* ─── LAYOUT ─────────────────────────────────────────────────────────────── */
+#app { display:flex; flex-direction:column; width:100%; height:100%; }
+
+/* ─── TOP BAR ────────────────────────────────────────────────────────────── */
+#topbar {
+  display:flex; align-items:center; gap:0.5rem;
+  padding:0 0.75rem; height:48px; flex-shrink:0;
+  background:rgba(20,20,26,0.95);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  z-index:10;
+}
+.topbar-logo {
+  font-family:var(--font-px); font-size:0.5rem;
+  color:var(--green); text-decoration:none;
+  margin-right:0.5rem; white-space:nowrap;
+  letter-spacing:0.05em;
+}
+.topbar-sep { width:1px; height:28px; background:var(--border); margin:0 0.25rem; }
+.tool-group { display:flex; gap:3px; align-items:center; }
+.tool-btn {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:1px; width:42px; height:38px;
+  background:transparent; border:1px solid transparent;
+  border-radius:6px; cursor:pointer; color:var(--muted);
+  font-size:1.1rem; transition:all 0.15s;
+  position:relative;
+}
+.tool-btn span.lbl { font-size:0.38rem; font-family:var(--font-px); letter-spacing:0.02em; }
+.tool-btn:hover { background:rgba(255,255,255,0.06); border-color:var(--border); color:var(--text); }
+.tool-btn.active { background:rgba(74,222,128,0.15); border-color:var(--green); color:var(--green); }
+.tool-btn.danger:hover { border-color:var(--red); color:var(--red); background:rgba(248,113,113,0.1); }
+.tool-btn.warn:hover { border-color:var(--orange); color:var(--orange); background:rgba(251,146,60,0.1); }
+.tool-btn[title]:hover::after {
+  content:attr(title); position:absolute; bottom:-30px; left:50%;
+  transform:translateX(-50%); background:#222; color:#fff;
+  font-size:0.65rem; padding:3px 7px; border-radius:4px;
+  white-space:nowrap; pointer-events:none; z-index:99;
+}
+.topbar-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
+.home-btn {
+  font-family:var(--font-px); font-size:0.45rem;
+  padding:0.4rem 0.8rem; background:transparent;
+  border:1px solid var(--border); border-radius:6px;
+  color:var(--muted); cursor:pointer; text-decoration:none;
+  transition:all 0.2s;
+}
+.home-btn:hover { border-color:var(--green); color:var(--green); }
+
+/* ─── MAIN AREA ──────────────────────────────────────────────────────────── */
+#main { display:flex; flex:1; overflow:hidden; }
+
+/* ─── PALETTE ────────────────────────────────────────────────────────────── */
+#palette {
+  width:168px; flex-shrink:0;
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+.palette-tabs {
+  display:flex; border-bottom:1px solid var(--border);
+}
+.tab-btn {
+  flex:1; padding:0.5rem 0; background:transparent;
+  border:none; cursor:pointer; color:var(--muted);
+  font-size:0.65rem; font-family:var(--font-ui); font-weight:600;
+  letter-spacing:0.03em; transition:all 0.15s;
+  border-bottom:2px solid transparent;
+}
+.tab-btn.active { color:var(--green); border-bottom-color:var(--green); }
+.tab-btn:hover:not(.active) { color:var(--text); }
+
+.palette-body { flex:1; overflow-y:auto; padding:0.5rem; }
+.palette-body::-webkit-scrollbar { width:4px; }
+.palette-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+
+.palette-section { display:none; }
+.palette-section.active { display:block; }
+
+.palette-item {
+  display:flex; align-items:center; gap:0.5rem;
+  padding:0.55rem 0.6rem; border-radius:8px;
+  border:1px solid transparent; cursor:pointer;
+  transition:all 0.15s; margin-bottom:4px;
+  background:rgba(255,255,255,0.03);
+}
+.palette-item:hover { background:rgba(255,255,255,0.07); border-color:var(--border); }
+.palette-item.selected { border-color:var(--green); background:rgba(74,222,128,0.1); }
+.palette-item .emoji { font-size:1.2rem; flex-shrink:0; }
+.palette-item .item-name { font-size:0.72rem; font-weight:600; color:var(--text); }
+.palette-item .item-sub  { font-size:0.6rem;  color:var(--muted); }
+.palette-color-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-left:auto; }
+
+.palette-hint {
+  padding:0.75rem; font-size:0.62rem; color:var(--muted);
+  border-top:1px solid var(--border); line-height:1.7;
+}
+
+/* ─── CANVAS WRAP ────────────────────────────────────────────────────────── */
+#canvas-wrap { flex:1; position:relative; overflow:hidden; }
+#game-canvas { display:block; width:100%; height:100%; cursor:crosshair; }
+#game-canvas.cursor-grab   { cursor:grab; }
+#game-canvas.cursor-delete { cursor:cell; }
+#game-canvas.cursor-push   { cursor:move; }
+
+/* ─── PAUSE OVERLAY ──────────────────────────────────────────────────────── */
+#pause-overlay {
+  position:absolute; inset:0; background:rgba(0,0,0,0.5);
+  display:none; align-items:center; justify-content:center;
+  z-index:20; backdrop-filter:blur(4px);
+}
+.pause-box {
+  text-align:center; padding:3rem 4rem;
+  background:rgba(26,26,36,0.9); border:1px solid rgba(74,222,128,0.3);
+  border-radius:16px;
+}
+.pause-box h2 { font-family:var(--font-px); font-size:1.5rem; color:var(--green); margin-bottom:1rem; }
+.pause-box p  { color:var(--muted); font-size:0.9rem; }
+
+/* ─── HUD ────────────────────────────────────────────────────────────────── */
+#hud {
+  position:absolute; bottom:0.75rem; left:50%; transform:translateX(-50%);
+  display:flex; gap:1rem; align-items:center;
+  background:rgba(14,14,20,0.8); border:1px solid var(--border);
+  padding:0.35rem 1rem; border-radius:999px;
+  font-size:0.7rem; color:var(--muted); pointer-events:none;
+  backdrop-filter:blur(6px); white-space:nowrap;
+}
+#hud span { color:var(--text); }
+#hud-slowmo { display:none; color:var(--cyan); }
+#hud-paused { display:none; color:var(--orange); }
+
+/* ─── BOTTOM CONTROLS BAR ────────────────────────────────────────────────── */
+#controls-bar {
+  position:absolute; bottom:0.75rem; right:0.75rem;
+  display:flex; flex-direction:column; gap:6px;
+  z-index:5;
+}
+.ctrl-btn {
+  width:38px; height:38px; border-radius:8px;
+  background:rgba(26,26,36,0.9); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:1rem; color:var(--muted);
+  transition:all 0.15s;
+}
+.ctrl-btn:hover { border-color:var(--green); color:var(--green); background:rgba(74,222,128,0.1); }
+
+/* ─── CONTEXT TIPS ───────────────────────────────────────────────────────── */
+#tip-bar {
+  position:absolute; top:0.5rem; left:50%; transform:translateX(-50%);
+  background:rgba(20,20,30,0.85); border:1px solid var(--border);
+  padding:0.3rem 1rem; border-radius:999px;
+  font-size:0.65rem; color:var(--muted); pointer-events:none;
+  white-space:nowrap; backdrop-filter:blur(6px);
+}
+
+/* ─── SLOW-MO BADGE ──────────────────────────────────────────────────────── */
+#slowmo-badge {
+  position:absolute; top:0.5rem; right:0.75rem;
+  background:rgba(34,211,238,0.15); border:1px solid var(--cyan);
+  padding:0.3rem 0.7rem; border-radius:999px;
+  font-family:var(--font-px); font-size:0.45rem; color:var(--cyan);
+  display:none; letter-spacing:0.08em;
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────────────────── */
+@media (max-width:600px) {
+  #palette { width:130px; }
+  .tool-btn { width:36px; height:34px; font-size:1rem; }
+}
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── TOP BAR ──────────────────────────────────────────────────────────── -->
+  <nav id="topbar">
+    <a href="index.html" class="topbar-logo">🍉 MELON<br>SANDBOX</a>
+    <div class="topbar-sep"></div>
+
+    <!-- Tools -->
+    <div class="tool-group">
+      <button class="tool-btn active" id="tool-grab"   title="Grab &amp; Drag (1)" onclick="game._selectTool('grab')">
+        ✋ <span class="lbl">GRAB</span>
+      </button>
+      <button class="tool-btn" id="tool-spawn"  title="Spawn Selected (2)" onclick="game._selectTool('spawn');if(!game.selectedItem)document.querySelector('.palette-item')?.click()">
+        ➕ <span class="lbl">SPAWN</span>
+      </button>
+      <button class="tool-btn" id="tool-delete" title="Delete Object (3)" onclick="game._selectTool('delete')">
+        🗑 <span class="lbl">DEL</span>
+      </button>
+      <button class="tool-btn" id="tool-push"   title="Force Push (4) / Right-Click" onclick="game._selectTool('push')">
+        💨 <span class="lbl">PUSH</span>
+      </button>
+      <button class="tool-btn" id="tool-freeze" title="Freeze / Unfreeze (5)" onclick="game._selectTool('freeze')">
+        ❄ <span class="lbl">FREEZE</span>
+      </button>
+    </div>
+
+    <div class="topbar-sep"></div>
+
+    <!-- Simulation controls -->
+    <div class="tool-group">
+      <button class="tool-btn" id="btn-pause" title="Pause/Resume (P)" onclick="game.world.paused=!game.world.paused;game._updatePauseUI()">
+        ⏸ <span class="lbl">PAUSE</span>
+      </button>
+      <button class="tool-btn" title="Slow Motion (S)" onclick="game.world.slowMo=!game.world.slowMo;this.classList.toggle('active',game.world.slowMo);document.getElementById('slowmo-badge').style.display=game.world.slowMo?'block':'none'">
+        🐢 <span class="lbl">SLOW</span>
+      </button>
+      <button class="tool-btn" title="Cycle Gravity (G)" onclick="game._cycleGravity()">
+        🌍 <span class="lbl">GRAV</span>
+      </button>
+      <button class="tool-btn warn" title="Detonate All Bombs (F)" onclick="game.detonateAll()">
+        💣 <span class="lbl">BOOM</span>
+      </button>
+    </div>
+
+    <div class="topbar-sep"></div>
+
+    <!-- File controls -->
+    <div class="tool-group">
+      <button class="tool-btn" title="Undo Last (Ctrl+Z)" onclick="game.undo()">
+        ↩ <span class="lbl">UNDO</span>
+      </button>
+      <button class="tool-btn" title="Save Scene (Ctrl+S)" onclick="game.save()">
+        💾 <span class="lbl">SAVE</span>
+      </button>
+      <button class="tool-btn" title="Load Scene (Ctrl+O)" onclick="game.load()">
+        📂 <span class="lbl">LOAD</span>
+      </button>
+      <button class="tool-btn danger" title="Clear All (Delete/Backspace)" onclick="game.clearAll()">
+        🚫 <span class="lbl">CLEAR</span>
+      </button>
+    </div>
+
+    <div class="topbar-right">
+      <a href="index.html" class="home-btn">◀ HOME</a>
+    </div>
+  </nav>
+
+  <!-- ── MAIN AREA ─────────────────────────────────────────────────────────── -->
+  <div id="main">
+
+    <!-- ── PALETTE ───────────────────────────────────────────────────────── -->
+    <aside id="palette">
+      <div class="palette-tabs">
+        <button class="tab-btn active" onclick="switchTab('characters',this)">👥</button>
+        <button class="tab-btn"        onclick="switchTab('weapons',this)">🔫</button>
+        <button class="tab-btn"        onclick="switchTab('props',this)">📦</button>
+      </div>
+      <div class="palette-body">
+        <div class="palette-section active" id="tab-characters"></div>
+        <div class="palette-section"        id="tab-weapons"></div>
+        <div class="palette-section"        id="tab-props"></div>
+      </div>
+      <div class="palette-hint" id="palette-hint">
+        Select an item, then<br>
+        press <b>2</b> (Spawn) and<br>
+        click the canvas.
+      </div>
+    </aside>
+
+    <!-- ── CANVAS WRAP ──────────────────────────────────────────────────── -->
+    <div id="canvas-wrap">
+      <canvas id="game-canvas"></canvas>
+
+      <!-- Pause overlay -->
+      <div id="pause-overlay">
+        <div class="pause-box">
+          <h2>⏸ PAUSED</h2>
+          <p>Press <b>P</b> to resume</p>
+        </div>
+      </div>
+
+      <!-- HUD -->
+      <div id="hud">
+        🍉 <span id="hud-fps">60 fps</span>
+        · <span id="hud-entities">0 entities</span>
+        · <span id="hud-grav">↓ normal-g</span>
+        · <span id="hud-zoom">100%</span>
+        <span id="hud-slowmo">🐢 SLOW-MO</span>
+      </div>
+
+      <!-- Tip bar -->
+      <div id="tip-bar" id="tip-bar">
+        🖱️ Left-drag to grab &nbsp;|&nbsp; Scroll to zoom &nbsp;|&nbsp; Alt+drag to pan &nbsp;|&nbsp; Right-click to push
+      </div>
+
+      <!-- Slow-mo badge -->
+      <div id="slowmo-badge">🐢 SLOW MOTION</div>
+
+      <!-- Mini camera controls -->
+      <div id="controls-bar">
+        <button class="ctrl-btn" title="Reset Camera (R)" onclick="game.camera.reset()">🔭</button>
+        <button class="ctrl-btn" title="Zoom In" onclick="game.camera.zoomAt(game.canvas.width/2,game.canvas.height/2,1.2)">➕</button>
+        <button class="ctrl-btn" title="Zoom Out" onclick="game.camera.zoomAt(game.canvas.width/2,game.canvas.height/2,1/1.2)">➖</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCRIPTS ──────────────────────────────────────────────────────────────── -->
+<script src="src/physics.js"></script>
+<script src="src/entities.js"></script>
+<script src="src/effects.js"></script>
+<script src="src/game.js"></script>
+<script>
+'use strict';
+
+// ── RESIZE CANVAS ──────────────────────────────────────────────────────────
+const canvas = document.getElementById('game-canvas');
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ── PALETTE UI ─────────────────────────────────────────────────────────────
+function buildPalette() {
+  Object.entries(PALETTE).forEach(([tab, items]) => {
+    const el = document.getElementById('tab-' + tab);
+    if (!el) return;
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'palette-item';
+      div.dataset.id = item.id;
+      div.innerHTML = `
+        <span class="emoji">${item.emoji}</span>
+        <div>
+          <div class="item-name">${item.label}</div>
+        </div>
+        <div class="palette-color-dot" style="background:${item.color}"></div>
+      `;
+      div.addEventListener('click', () => selectPaletteItem(item, div));
+      el.appendChild(div);
+    });
+  });
+}
+
+function selectPaletteItem(item, el) {
+  document.querySelectorAll('.palette-item').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  game.selectedItem = item.id;
+
+  // If it's a weapon or spawn item, auto-switch to spawn/fire tool
+  if (['pistol','rifle','shotgun','rocket','flamethrower'].includes(item.id)) {
+    game._selectTool('spawn'); // weapon fire happens on spawn tool click
+  } else {
+    game._selectTool('spawn');
+  }
+
+  // Update hint
+  const hint = document.getElementById('palette-hint');
+  if (['pistol','rifle','shotgun','rocket','flamethrower'].includes(item.id)) {
+    hint.innerHTML = `<b>${item.emoji} ${item.label}</b><br>Click canvas to fire.<br>Aim at ragdolls!`;
+  } else if (['grenade','bomb','mine'].includes(item.id)) {
+    hint.innerHTML = `<b>${item.emoji} ${item.label}</b><br>Click canvas to place.<br>${item.id==='bomb'?'Press <b>F</b> to detonate!':item.id==='grenade'?'Explodes in 3s!':'Triggers on contact!'}`;
+  } else {
+    hint.innerHTML = `<b>${item.emoji} ${item.label}</b><br>Click canvas to spawn.`;
+  }
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.palette-section').forEach(s => s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ── KEYBOARD SHORTCUTS ─────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 's') { e.preventDefault(); game.save(); }
+  if (e.ctrlKey && e.key === 'o') { e.preventDefault(); game.load(); }
+});
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+buildPalette();
+const game = new Game(canvas);
+
+// Animate tip bar out
+setTimeout(() => {
+  const tip = document.getElementById('tip-bar');
+  if (tip) { tip.style.transition='opacity 1s'; tip.style.opacity='0'; }
+}, 6000);
+</script>
+</body>
+</html>

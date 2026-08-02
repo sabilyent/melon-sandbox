@@ -7,7 +7,13 @@
   <meta name="description" content="Melon Sandbox is a free browser-based 2D ragdoll physics sandbox game. Spawn characters, weapons, and props — then let chaos unfold. No download needed." />
   <meta property="og:title" content="Melon Sandbox — Browser Physics Sandbox" />
   <meta property="og:description" content="Free browser-based ragdoll physics sandbox. Spawn, destroy, and experiment. No download needed." />
-  <meta property="og:image" content="assets/hero_banner.jpg" />
+  <meta name="theme-color" content="#0d0d12" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Melon Sandbox" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
@@ -1395,6 +1401,13 @@ document.getElementById('heroPlayBtn').addEventListener('click', function(e) {
 
   setTimeout(() => { window.location.href = this.href; }, 400);
 });
+
+// PWA Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW error:', err));
+  });
+}
 </script>
 
 </body>

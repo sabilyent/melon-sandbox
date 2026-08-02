@@ -6,6 +6,11 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Melon Sandbox" />
+  <meta name="theme-color" content="#0d0d12" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
   <title>Melon Sandbox — Play</title>
   <meta name="description" content="Play Melon Sandbox — a free browser 2D ragdoll physics sandbox. Spawn, shoot, explode." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -244,6 +249,38 @@ html, body {
   font-family:var(--font-px); font-size:0.4rem; color:var(--cyan);
   display:none; letter-spacing:0.07em;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   PWA INSTALL MODAL
+═══════════════════════════════════════════════════════════ */
+#pwa-install-modal {
+  display: none;
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0, 0, 0, 0.75);
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.pwa-box {
+  background: #141420; border: 1.5px solid rgba(74, 222, 128, 0.5);
+  border-radius: 20px; padding: 1.8rem 2.2rem; text-align: center;
+  max-width: 400px; width: 88%;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 35px rgba(74,222,128,0.2);
+  animation: pwaPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes pwaPop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
+.pwa-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+.pwa-box h3 { font-family: var(--font-px); font-size: 0.8rem; color: var(--green); margin-bottom: 0.75rem; letter-spacing: 0.05em; line-height: 1.5; }
+.pwa-box p  { color: var(--muted); font-size: 0.8rem; line-height: 1.5; margin-bottom: 1.5rem; }
+.pwa-actions { display: flex; gap: 0.75rem; justify-content: center; }
+.pwa-btn {
+  padding: 0.7rem 1.3rem; border-radius: 8px; font-family: var(--font-px);
+  font-size: 0.48rem; cursor: pointer; border: none; transition: all 0.15s;
+  letter-spacing: 0.04em;
+}
+.pwa-btn.primary { background: var(--green); color: #051a08; font-weight: bold; }
+.pwa-btn.primary:hover { background: #38c172; transform: translateY(-1px); }
+.pwa-btn.secondary { background: rgba(255,255,255,0.08); color: var(--muted); border: 1px solid var(--border); }
+.pwa-btn.secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
 
 /* ─── Camera Controls (desktop only) ────── */
 #controls-bar {
@@ -585,8 +622,20 @@ html, body {
       <button class="mob-btn danger" onclick="game.clearAll()">🚫<span>CLEAR</span></button>
     </div>
   </div>
-
 </div><!-- #app -->
+
+<!-- ══ PWA INSTALL PROMPT MODAL ═══════════════════════════════════════════ -->
+<div id="pwa-install-modal">
+  <div class="pwa-box">
+    <div class="pwa-icon">🍉</div>
+    <h3>INSTALL MELON SANDBOX</h3>
+    <p>Install the app for full-screen offline gameplay & instant launching!</p>
+    <div class="pwa-actions">
+      <button id="pwa-install-btn" class="pwa-btn primary">📲 INSTALL APP</button>
+      <button id="pwa-dismiss-btn" class="pwa-btn secondary">LATER</button>
+    </div>
+  </div>
+</div>
 
 <!-- ─── SCRIPTS ───────────────────────────────────────────────────────────── -->
 <script src="src/physics.js"></script>
@@ -772,6 +821,58 @@ setTimeout(() => {
 }, 7000);
 
 window.addEventListener('resize', updateTipBar);
+
+// ── PWA SERVICE WORKER & INSTALL PROMPT ────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      console.log('SW registered:', reg.scope);
+    }).catch(err => console.error('SW registration failed:', err));
+  });
+}
+
+let deferredPrompt = null;
+const pwaModal   = document.getElementById('pwa-install-modal');
+const installBtn = document.getElementById('pwa-install-btn');
+const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+// Check if app is running in standalone mode (already installed)
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Automatically show install prompt when opening game.html if not already installed/dismissed
+  if (!isStandalone && !sessionStorage.getItem('pwa_prompt_dismissed')) {
+    setTimeout(() => {
+      if (pwaModal) pwaModal.style.display = 'flex';
+    }, 800);
+  }
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (pwaModal) pwaModal.style.display = 'none';
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      console.log('Install prompt result:', choice.outcome);
+      deferredPrompt = null;
+    }
+  });
+}
+
+if (dismissBtn) {
+  dismissBtn.addEventListener('click', () => {
+    if (pwaModal) pwaModal.style.display = 'none';
+    sessionStorage.setItem('pwa_prompt_dismissed', 'true');
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  if (pwaModal) pwaModal.style.display = 'none';
+  console.log('Melon Sandbox app installed!');
+});
 </script>
 </body>
 </html>

@@ -252,96 +252,117 @@ html, body {
 
 /* ═══════════════════════════════════════════════════════════
    PWA INSTALL MODAL
+═════════/* ═══════════════════════════════════════════════════════════
+   MOBILE LEFT SIDEBAR (ALL TOOLS & CONTROLS ON LEFT SIDE)
 ═══════════════════════════════════════════════════════════ */
-#pwa-install-modal {
-  display: none;
-  position: fixed; inset: 0; z-index: 10000;
-  background: rgba(0, 0, 0, 0.75);
-  align-items: center; justify-content: center;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-}
-.pwa-box {
-  background: #141420; border: 1.5px solid rgba(74, 222, 128, 0.5);
-  border-radius: 20px; padding: 1.8rem 2.2rem; text-align: center;
-  max-width: 400px; width: 88%;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 35px rgba(74,222,128,0.2);
-  animation: pwaPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-@keyframes pwaPop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
-.pwa-icon { font-size: 3rem; margin-bottom: 0.5rem; }
-.pwa-box h3 { font-family: var(--font-px); font-size: 0.8rem; color: var(--green); margin-bottom: 0.75rem; letter-spacing: 0.05em; line-height: 1.5; }
-.pwa-box p  { color: var(--muted); font-size: 0.8rem; line-height: 1.5; margin-bottom: 1.5rem; }
-.pwa-actions { display: flex; gap: 0.75rem; justify-content: center; }
-.pwa-btn {
-  padding: 0.7rem 1.3rem; border-radius: 8px; font-family: var(--font-px);
-  font-size: 0.48rem; cursor: pointer; border: none; transition: all 0.15s;
-  letter-spacing: 0.04em;
-}
-.pwa-btn.primary { background: var(--green); color: #051a08; font-weight: bold; }
-.pwa-btn.primary:hover { background: #38c172; transform: translateY(-1px); }
-.pwa-btn.secondary { background: rgba(255,255,255,0.08); color: var(--muted); border: 1px solid var(--border); }
-.pwa-btn.secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
-
-/* ─── Camera Controls (desktop only) ────── */
-#controls-bar {
-  position:absolute; bottom:0.75rem; right:0.75rem;
-  display:flex; flex-direction:column; gap:5px; z-index:5;
-}
-.ctrl-btn {
-  width:36px; height:36px; border-radius:8px;
-  background:rgba(26,26,36,0.92); border:1px solid var(--border);
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer; font-size:0.9rem; color:var(--muted);
-  transition:all 0.15s;
-}
-.ctrl-btn:hover { border-color:var(--green); color:var(--green); background:rgba(74,222,128,0.1); }
-
-/* ═══════════════════════════════════════════════════════════
-   MOBILE SIDEBARS (LEFT & RIGHT)
-═══════════════════════════════════════════════════════════ */
-#mob-sidebar-left, #mob-sidebar-right {
+#mob-sidebar-left {
   display: none;
   position: absolute;
   top: 50%; transform: translateY(-50%);
+  left: max(6px, env(safe-area-inset-left));
   z-index: 60;
-  flex-direction: column; gap: 4px;
+  flex-direction: row; gap: 4px;
   pointer-events: auto;
 }
-#mob-sidebar-left  { left: max(6px, env(safe-area-inset-left)); }
-#mob-sidebar-right { right: max(6px, env(safe-area-inset-right)); }
+.mob-side-col {
+  display: flex; flex-direction: column; gap: 4px;
+}
 
 .mob-side-btn {
-  width: 44px; height: 40px; border-radius: 10px;
-  background: rgba(16, 16, 26, 0.9); border: 1.5px solid var(--border);
+  width: 42px; height: 38px; border-radius: 9px;
+  background: rgba(16, 16, 26, 0.92); border: 1.5px solid var(--border);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 1.15rem; color: var(--muted);
+  cursor: pointer; font-size: 1.1rem; color: var(--muted);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   gap: 1px; transition: all 0.12s; text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
-.mob-side-btn span { font-size: 0.31rem; font-family: var(--font-px); color: inherit; letter-spacing: 0.02em; }
+.mob-side-btn span { font-size: 0.3rem; font-family: var(--font-px); color: inherit; letter-spacing: 0.01em; }
 .mob-side-btn:active { transform: scale(0.92); }
-.mob-side-btn.active { background: rgba(74,222,128,0.2); border-color: var(--green); color: var(--green); }
+.mob-side-btn.active { background: rgba(74,222,128,0.22); border-color: var(--green); color: var(--green); }
 .mob-side-btn.danger { border-color: rgba(248,113,113,0.3); }
-.mob-side-btn.danger:active { background: rgba(248,113,113,0.2); border-color: var(--red); color: var(--red); }
+.mob-side-btn.danger:active { background: rgba(248,113,113,0.22); border-color: var(--red); color: var(--red); }
 .mob-side-btn.warn { border-color: rgba(251,146,60,0.3); }
-.mob-side-btn.warn:active { background: rgba(251,146,60,0.2); border-color: var(--orange); color: var(--orange); }
+.mob-side-btn.warn:active { background: rgba(251,146,60,0.22); border-color: var(--orange); color: var(--orange); }
 .mob-side-btn.accent { border-color: rgba(34,211,238,0.3); }
-.mob-side-btn.accent:active { background: rgba(34,211,238,0.2); border-color: var(--cyan); color: var(--cyan); }
-.mob-side-sep { height: 1px; width: 26px; background: var(--border); margin: 2px auto; }
+.mob-side-btn.accent:active { background: rgba(34,211,238,0.22); border-color: var(--cyan); color: var(--cyan); }
+.mob-side-sep { height: 1px; width: 24px; background: var(--border); margin: 2px auto; }
 
 #mob-palette { display: none; }
 
-/* Apply mobile layout when screen width < 1024px AND landscape */
-@media (orientation:landscape) and (max-width:1023px) {
+/* Apply mobile layout for any mobile/touch device or screens <= 1200px in landscape */
+@media (orientation:landscape) and (max-width:1200px), (pointer:coarse) and (orientation:landscape) {
 
-  /* Hide topbar, bottombar, desktop palette & desktop camera buttons */
+  /* Unconditionally HIDE top bar, desktop palette, controls bar & bottom bar */
   #topbar       { display: none !important; }
   #palette      { display: none !important; }
   #controls-bar { display: none !important; }
+  #mob-toolbar  { display: none !important; }
+  #mob-sidebar-right { display: none !important; }
 
-  /* Show left and right sidebars */
-  #mob-sidebar-left, #mob-sidebar-right { display: flex; }
+  /* Show Left Sidebar */
+  #mob-sidebar-left { display: flex !important; }
+
+  /* Mobile item drawer pops up next to left sidebar */
+  #mob-palette {
+    display: block;
+    position: absolute;
+    left: calc(94px + max(6px, env(safe-area-inset-left)));
+    top: 50%; transform: translateY(-50%) translateX(-120%);
+    width: 210px; max-height: 85vh;
+    background: rgba(14,14,24,0.96);
+    border: 1.5px solid var(--border); border-radius: 14px;
+    z-index: 58;
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    overflow: hidden;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  }
+  #mob-palette.open { transform: translateY(-50%) translateX(0); }
+
+  /* Tabs inside mobile palette */
+  #mob-palette .mob-tabs {
+    display: flex; border-bottom: 1px solid var(--border);
+    padding: 0 0.2rem;
+  }
+  #mob-palette .mob-tab {
+    flex: 1; padding: 0.4rem; background: transparent; border: none;
+    color: var(--muted); font-size: 0.85rem; cursor: pointer;
+    border-bottom: 2px solid transparent; transition: all 0.12s;
+  }
+  #mob-palette .mob-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+  /* Items grid inside mobile palette */
+  #mob-palette .mob-items {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 8px; max-height: 220px; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mob-palette-item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; width: 60px; height: 58px;
+    background: rgba(255,255,255,0.04); border: 1.5px solid var(--border);
+    border-radius: 10px; cursor: pointer; flex-shrink: 0;
+    padding: 4px; transition: all 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-palette-item:active   { transform: scale(0.9); }
+  .mob-palette-item.selected { border-color: var(--green); background: rgba(74,222,128,0.12); }
+  .mob-palette-item .m-emoji { font-size: 1.3rem; line-height: 1; }
+  .mob-palette-item .m-label { font-size: 0.48rem; color: var(--muted); text-align: center; font-weight: 600; }
+  .mob-palette-item.selected .m-label { color: var(--green); }
+
+  /* HUD position on mobile landscape */
+  #hud { bottom: 0.4rem; font-size: 0.52rem; padding: 0.18rem 0.55rem; }
+  #tip-bar { top: 0.4rem; font-size: 0.48rem; padding: 0.18rem 0.55rem; }
+  #slowmo-badge { top: 0.4rem; font-size: 0.35rem; }
+}
+
+/* Very short screens */
+@media (orientation:landscape) and (max-height:360px) {
+  .mob-side-btn { height: 32px; font-size: 0.95rem; }
+}ght { display: flex; }
 
   /* Mobile item drawer positioned next to left sidebar */
   #mob-palette {
@@ -542,28 +563,27 @@ html, body {
         <button class="ctrl-btn" title="Zoom Out"         onclick="game.camera.zoomAt(game.canvas.width/2,game.canvas.height/2,1/1.2)">➖</button>
       </div>
 
-      <!-- ── MOBILE SIDEBAR LEFT (tools + items + home) ── -->
+      <!-- ── MOBILE LEFT SIDEBAR (ALL TOOLS & CONTROLS ON LEFT EDGE) ── -->
       <div id="mob-sidebar-left">
-        <button class="mob-side-btn active" id="mob-tool-grab"   onclick="selectTool('grab')">✋<span>GRAB</span></button>
-        <button class="mob-side-btn"        id="mob-tool-spawn"  onclick="selectTool('spawn')">➕<span>SPAWN</span></button>
-        <button class="mob-side-btn"        id="mob-tool-delete" onclick="selectTool('delete')">🗑<span>DEL</span></button>
-        <button class="mob-side-btn"        id="mob-tool-push"   onclick="selectTool('push')">💨<span>PUSH</span></button>
-        <button class="mob-side-btn"        id="mob-tool-freeze" onclick="selectTool('freeze')">❄<span>FRZ</span></button>
-        <div class="mob-side-sep"></div>
-        <button class="mob-side-btn accent" id="mob-items-btn"   onclick="toggleMobilePalette()">🎮<span>ITEMS</span></button>
-        <a href="index.html" class="mob-side-btn">◀<span>HOME</span></a>
-      </div>
-
-      <!-- ── MOBILE SIDEBAR RIGHT (simulation + actions) ── -->
-      <div id="mob-sidebar-right">
-        <button class="mob-side-btn" id="mob-pause" onclick="togglePause()">⏸<span>PAUSE</span></button>
-        <button class="mob-side-btn accent" id="mob-slow" onclick="toggleSlowMo(this)">🐢<span>SLOW</span></button>
-        <button class="mob-side-btn" onclick="game._cycleGravity()">🌍<span>GRAV</span></button>
-        <div class="mob-side-sep"></div>
-        <button class="mob-side-btn warn" onclick="game.detonateAll()">💣<span>BOOM</span></button>
-        <button class="mob-side-btn" onclick="game.undo()">↩<span>UNDO</span></button>
-        <button class="mob-side-btn accent" onclick="checkAndShowInstallPrompt()">📲<span>APP</span></button>
-        <button class="mob-side-btn danger" onclick="game.clearAll()">🚫<span>CLEAR</span></button>
+        <div class="mob-side-col">
+          <button class="mob-side-btn active" id="mob-tool-grab"   onclick="selectTool('grab')">✋<span>GRAB</span></button>
+          <button class="mob-side-btn"        id="mob-tool-spawn"  onclick="selectTool('spawn')">➕<span>SPAWN</span></button>
+          <button class="mob-side-btn"        id="mob-tool-delete" onclick="selectTool('delete')">🗑<span>DEL</span></button>
+          <button class="mob-side-btn"        id="mob-tool-push"   onclick="selectTool('push')">💨<span>PUSH</span></button>
+          <button class="mob-side-btn"        id="mob-tool-freeze" onclick="selectTool('freeze')">❄<span>FRZ</span></button>
+          <div class="mob-side-sep"></div>
+          <button class="mob-side-btn accent" id="mob-items-btn"   onclick="toggleMobilePalette()">🎮<span>ITEMS</span></button>
+        </div>
+        <div class="mob-side-col">
+          <button class="mob-side-btn"        id="mob-pause"  onclick="togglePause()">⏸<span>PAUSE</span></button>
+          <button class="mob-side-btn accent" id="mob-slow"   onclick="toggleSlowMo(this)">🐢<span>SLOW</span></button>
+          <button class="mob-side-btn"        onclick="game._cycleGravity()">🌍<span>GRAV</span></button>
+          <button class="mob-side-btn warn"   onclick="game.detonateAll()">💣<span>BOOM</span></button>
+          <button class="mob-side-btn"        onclick="game.undo()">↩<span>UNDO</span></button>
+          <button class="mob-side-btn accent" onclick="checkAndShowInstallPrompt()">📲<span>APP</span></button>
+          <button class="mob-side-btn danger" onclick="game.clearAll()">🚫<span>CLEAR</span></button>
+          <a href="index.html" class="mob-side-btn">◀<span>HOME</span></a>
+        </div>
       </div>
 
       <!-- ── MOBILE ITEM DRAWER ── -->

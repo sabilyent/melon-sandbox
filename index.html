@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Melon Sandbox — Browser Physics Sandbox Game</title>
+  <meta name="description" content="Melon Sandbox is a free browser-based 2D ragdoll physics sandbox game. Spawn characters, weapons, and props — then let chaos unfold. No download needed." />
+  <meta property="og:title" content="Melon Sandbox — Browser Physics Sandbox" />
+  <meta property="og:description" content="Free browser-based ragdoll physics sandbox. Spawn, destroy, and experiment. No download needed." />
+  <meta property="og:image" content="assets/hero_banner.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js" crossorigin="anonymous"></script>
+  <style>
+    /* ─── RESET & BASE ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --clr-bg:        #0d0d0f;
+      --clr-surface:   #14141a;
+      --clr-panel:     #1a1a24;
+      --clr-border:    rgba(255,255,255,0.08);
+      --clr-green:     #4ade80;
+      --clr-green-dim: #22c55e;
+      --clr-orange:    #fb923c;
+      --clr-red:       #f87171;
+      --clr-yellow:    #fbbf24;
+      --clr-cyan:      #22d3ee;
+      --clr-purple:    #a78bfa;
+      --clr-text:      #f0f0f5;
+      --clr-muted:     #8888aa;
+      --font-pixel:    'Press Start 2P', monospace;
+      --font-body:     'Outfit', sans-serif;
+      --max-w:         1200px;
+      --radius:        12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ─── STAR PARTICLES BG ─────────────────────────────────────────────── */
+    #star-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    /* ─── NAV ───────────────────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 64px;
+      background: rgba(13,13,15,0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--clr-border);
+      gap: 1rem;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .nav-logo img {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 8px;
+      image-rendering: pixelated;
+    }
+
+    .nav-logo-text {
+      font-family: var(--font-pixel);
+      font-size: 0.6rem;
+      color: var(--clr-green);
+      line-height: 1.4;
+      letter-spacing: 0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--clr-muted);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      letter-spacing: 0.03em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--clr-text); }
+
+    .btn-nav {
+      font-family: var(--font-pixel);
+      font-size: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: var(--clr-green);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      letter-spacing: 0.05em;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 0 20px rgba(74,222,128,0.4);
+      white-space: nowrap;
+    }
+
+    .btn-nav:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(74,222,128,0.6);
+    }
+
+    /* ─── HERO ──────────────────────────────────────────────────────────── */
+    #hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 6rem 1.5rem 4rem;
+      overflow: hidden;
+    }
+
+    .hero-glow {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 60% at 50% 20%, rgba(74,222,128,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 80%, rgba(251,146,60,0.1) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      font-family: var(--font-pixel);
+      font-size: 0.45rem;
+      color: var(--clr-green);
+      border: 1px solid var(--clr-green);
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      letter-spacing: 0.1em;
+      margin-bottom: 1.5rem;
+      background: rgba(74,222,128,0.08);
+      opacity: 0;
+    }
+
+    .hero-title {
+      font-family: var(--font-pixel);
+      font-size: clamp(1.6rem, 5vw, 3.5rem);
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.5rem;
+      opacity: 0;
+    }
+
+    .hero-title .line-green  { color: var(--clr-green); display: block; }
+    .hero-title .line-orange { color: var(--clr-orange); display: block; }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.3rem);
+      font-weight: 400;
+      color: var(--clr-muted);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+      opacity: 0;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 4rem;
+      opacity: 0;
+    }
+
+    .btn-primary {
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+      padding: 1rem 2.2rem;
+      background: linear-gradient(135deg, var(--clr-green), var(--clr-green-dim));
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 0 30px rgba(74,222,128,0.5), 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 0 50px rgba(74,222,128,0.7), 0 8px 30px rgba(0,0,0,0.5);
+    }
+
+    .btn-secondary {
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+      padding: 1rem 2.2rem;
+      background: transparent;
+      color: var(--clr-text);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--clr-orange);
+      background: rgba(251,146,60,0.08);
+      transform: translateY(-3px);
+    }
+
+    /* Hero Banner Image */
+    .hero-image-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      border-radius: 16px;
+      overflow: hidden;
+      opacity: 0;
+      box-shadow:
+        0 0 0 1px rgba(74,222,128,0.2),
+        0 40px 80px rgba(0,0,0,0.8),
+        0 0 80px rgba(74,222,128,0.1);
+    }
+
+    .hero-image-wrap img {
+      width: 100%;
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .hero-image-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, var(--clr-bg) 0%, transparent 40%);
+    }
+
+    /* Floating pixel particles */
+    .pixel-particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    /* ─── SECTION BASE ───────────────────────────────────────────────────── */
+    section {
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 6rem 1.5rem;
+    }
+
+    .section-label {
+      font-family: var(--font-pixel);
+      font-size: 0.5rem;
+      color: var(--clr-orange);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-family: var(--font-pixel);
+      font-size: clamp(1rem, 2.5vw, 1.8rem);
+      line-height: 1.4;
+      margin-bottom: 1rem;
+    }
+
+    .section-desc {
+      color: var(--clr-muted);
+      font-size: 1.1rem;
+      max-width: 560px;
+    }
+
+    /* ─── STATS STRIP ───────────────────────────────────────────────────── */
+    #stats {
+      border-top: 1px solid var(--clr-border);
+      border-bottom: 1px solid var(--clr-border);
+      background: var(--clr-surface);
+    }
+
+    .stats-grid {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 2rem;
+      text-align: center;
+    }
+
+    .stat-item { opacity: 0; }
+
+    .stat-num {
+      font-family: var(--font-pixel);
+      font-size: clamp(1.2rem, 3vw, 2rem);
+      color: var(--clr-green);
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--clr-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* ─── FEATURES ─────────────────────────────────────────────────────── */
+    #features { background: var(--clr-bg); }
+
+    .features-header { margin-bottom: 4rem; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      background: var(--clr-panel);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: border-color 0.3s, transform 0.3s;
+      cursor: default;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--card-accent, var(--clr-green));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:hover { border-color: rgba(255,255,255,0.15); }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-card:hover .feature-icon { transform: scale(1.15) rotate(-5deg); }
+
+    .feature-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1.2rem;
+      display: inline-block;
+      transition: transform 0.3s;
+    }
+
+    .feature-card h3 {
+      font-family: var(--font-pixel);
+      font-size: 0.65rem;
+      margin-bottom: 0.8rem;
+      letter-spacing: 0.05em;
+      color: var(--clr-text);
+    }
+
+    .feature-card p {
+      font-size: 0.95rem;
+      color: var(--clr-muted);
+      line-height: 1.7;
+    }
+
+    /* ─── WEAPONS SHOWCASE ──────────────────────────────────────────────── */
+    #weapons {
+      background: var(--clr-surface);
+      border-top: 1px solid var(--clr-border);
+    }
+
+    .weapons-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .weapons-layout { grid-template-columns: 1fr; }
+    }
+
+    .weapons-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .weapon-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--clr-panel);
+      border: 1px solid var(--clr-border);
+      border-radius: 10px;
+      padding: 1rem 1.4rem;
+      opacity: 0;
+      transform: translateX(-30px);
+      cursor: default;
+      transition: border-color 0.25s, background 0.25s;
+    }
+
+    .weapon-row:hover {
+      border-color: var(--clr-orange);
+      background: rgba(251,146,60,0.05);
+    }
+
+    .weapon-icon {
+      font-size: 1.8rem;
+      flex-shrink: 0;
+      width: 44px;
+      text-align: center;
+    }
+
+    .weapon-name {
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .weapon-desc {
+      font-size: 0.85rem;
+      color: var(--clr-muted);
+    }
+
+    .weapon-bar-wrap {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.25rem;
+    }
+
+    .weapon-bar-label {
+      font-size: 0.7rem;
+      color: var(--clr-muted);
+    }
+
+    .weapon-bar {
+      width: 80px;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .weapon-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 1s ease;
+    }
+
+    /* ─── HOW TO PLAY ───────────────────────────────────────────────────── */
+    #how-to-play { background: var(--clr-bg); }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+      margin-top: 4rem;
+      counter-reset: step;
+    }
+
+    .step-card {
+      text-align: center;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    .step-num {
+      font-family: var(--font-pixel);
+      font-size: 2.5rem;
+      color: rgba(74,222,128,0.2);
+      display: block;
+      margin-bottom: 1rem;
+      counter-increment: step;
+    }
+
+    .step-icon {
+      font-size: 2.5rem;
+      display: block;
+      margin-bottom: 1rem;
+    }
+
+    .step-card h4 {
+      font-family: var(--font-pixel);
+      font-size: 0.6rem;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      color: var(--clr-yellow);
+    }
+
+    .step-card p {
+      font-size: 0.9rem;
+      color: var(--clr-muted);
+    }
+
+    /* ─── CONTROLS TABLE ───────────────────────────────────────────────── */
+    #controls {
+      background: var(--clr-surface);
+      border-top: 1px solid var(--clr-border);
+      border-bottom: 1px solid var(--clr-border);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 3rem;
+    }
+
+    @media (max-width: 640px) {
+      .controls-grid { grid-template-columns: 1fr; }
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--clr-panel);
+      border: 1px solid var(--clr-border);
+      border-radius: 8px;
+      padding: 0.8rem 1.2rem;
+      opacity: 0;
+    }
+
+    .control-action { font-size: 0.9rem; color: var(--clr-muted); }
+
+    .kbd {
+      font-family: var(--font-pixel);
+      font-size: 0.45rem;
+      background: var(--clr-bg);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-bottom: 3px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      color: var(--clr-cyan);
+      white-space: nowrap;
+    }
+
+    /* ─── CTA BANNER ────────────────────────────────────────────────────── */
+    #cta {
+      background: var(--clr-bg);
+      text-align: center;
+    }
+
+    .cta-box {
+      background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(251,146,60,0.06));
+      border: 1px solid rgba(74,222,128,0.2);
+      border-radius: 24px;
+      padding: 5rem 2rem;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    .cta-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(74,222,128,0.07), transparent);
+      pointer-events: none;
+    }
+
+    .cta-title {
+      font-family: var(--font-pixel);
+      font-size: clamp(0.9rem, 2.5vw, 1.6rem);
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+
+    .cta-sub {
+      color: var(--clr-muted);
+      font-size: 1.1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    /* Animated border glow */
+    @keyframes borderGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(74,222,128,0.3), inset 0 0 20px rgba(74,222,128,0.03); }
+      50%       { box-shadow: 0 0 40px rgba(74,222,128,0.5), inset 0 0 40px rgba(74,222,128,0.06); }
+    }
+
+    .cta-box { animation: borderGlow 3s ease-in-out infinite; }
+
+    /* ─── FOOTER ────────────────────────────────────────────────────────── */
+    footer {
+      position: relative;
+      z-index: 1;
+      background: var(--clr-surface);
+      border-top: 1px solid var(--clr-border);
+      padding: 3rem 1.5rem;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: var(--font-pixel);
+      font-size: 0.7rem;
+      color: var(--clr-green);
+      display: block;
+      margin-bottom: 1rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+
+    .footer-links a {
+      color: var(--clr-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--clr-text); }
+
+    .footer-copy {
+      font-size: 0.8rem;
+      color: rgba(136,136,170,0.5);
+    }
+
+    /* ─── SCROLLBAR ─────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--clr-bg); }
+    ::-webkit-scrollbar-thumb { background: rgba(74,222,128,0.3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(74,222,128,0.5); }
+
+    /* ─── SCANLINE OVERLAY ─────────────────────────────────────────────── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 0 1rem; }
+      .nav-links { display: none; }
+      .hero-buttons { flex-direction: column; align-items: center; }
+    }
+
+    /* ─── CURSOR DOT ─────────────────────────────────────────────────────── */
+    .cursor-dot {
+      position: fixed;
+      top: 0; left: 0;
+      width: 8px; height: 8px;
+      background: var(--clr-green);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: width 0.2s, height 0.2s, background 0.2s;
+      mix-blend-mode: screen;
+    }
+
+    .cursor-ring {
+      position: fixed;
+      top: 0; left: 0;
+      width: 32px; height: 32px;
+      border: 1.5px solid rgba(74,222,128,0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9997;
+      transform: translate(-50%, -50%);
+      transition: transform 0.12s ease, width 0.2s, height 0.2s;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Star background canvas -->
+<canvas id="star-canvas"></canvas>
+
+<!-- ─── NAV ──────────────────────────────────────────────────────────────── -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <img src="assets/melon_logo.jpg" alt="Melon Sandbox logo" />
+    <span class="nav-logo-text">MELON<br>SANDBOX</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#weapons">Weapons</a></li>
+    <li><a href="#how-to-play">How to Play</a></li>
+    <li><a href="#controls">Controls</a></li>
+  </ul>
+  <a href="game.html" class="btn-nav" id="playBtn">▶ PLAY NOW</a>
+</nav>
+
+<!-- ─── HERO ──────────────────────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="hero-glow"></div>
+
+  <!-- Floating pixel particles -->
+  <div class="pixel-particle" style="top:20%;left:10%;background:var(--clr-green);--clr-particle:var(--clr-green)"></div>
+  <div class="pixel-particle" style="top:60%;left:5%;background:var(--clr-orange)"></div>
+  <div class="pixel-particle" style="top:30%;right:8%;background:var(--clr-cyan)"></div>
+  <div class="pixel-particle" style="top:70%;right:12%;background:var(--clr-red)"></div>
+  <div class="pixel-particle" style="top:15%;right:25%;background:var(--clr-yellow)"></div>
+  <div class="pixel-particle" style="top:80%;left:30%;background:var(--clr-purple)"></div>
+
+  <div class="hero-badge" id="heroBadge">🍉 FREE BROWSER GAME · NO DOWNLOAD</div>
+
+  <h1 class="hero-title" id="heroTitle">
+    <span class="line-green" id="titleLine1">MELON</span>
+    <span class="line-orange" id="titleLine2">SANDBOX</span>
+  </h1>
+
+  <p class="hero-sub" id="heroSub">
+    A chaotic 2D ragdoll physics sandbox. Spawn weapons, blow things up,
+    watch the chaos unfold — right in your browser. No rules. Pure mayhem.
+  </p>
+
+  <div class="hero-buttons" id="heroButtons">
+    <a href="game.html" class="btn-primary" id="heroPlayBtn">▶ PLAY FREE NOW</a>
+    <a href="#features" class="btn-secondary">LEARN MORE ↓</a>
+  </div>
+
+  <div class="hero-image-wrap" id="heroImage">
+    <img src="assets/hero_banner.jpg" alt="Melon Sandbox gameplay — ragdolls flying with explosions" loading="eager" />
+    <div class="hero-image-overlay"></div>
+  </div>
+</section>
+
+<!-- ─── STATS ─────────────────────────────────────────────────────────────── -->
+<section id="stats">
+  <div class="stats-grid">
+    <div class="stat-item">
+      <span class="stat-num" data-target="20">0</span>
+      <span class="stat-label">Weapons & Tools</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="60">0</span>
+      <span class="stat-label">FPS Physics</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="100">0</span>
+      <span class="stat-label">Simultaneous Bodies</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num" data-target="0">0</span>
+      <span class="stat-label">Install Required</span>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FEATURES ─────────────────────────────────────────────────────────── -->
+<section id="features">
+  <div class="section-inner">
+    <div class="features-header">
+      <p class="section-label">Core Features</p>
+      <h2 class="section-title">Everything you need<br>to cause chaos</h2>
+      <p class="section-desc">A full physics sandbox built in pure JavaScript — no plugins, no install, just open and play.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card" style="--card-accent: var(--clr-green)">
+        <span class="feature-icon">⚡</span>
+        <h3>Real-time Physics</h3>
+        <p>60 FPS impulse-based physics with verlet integration. Bodies collide, stack, and tumble with satisfying weight.</p>
+      </div>
+      <div class="feature-card" style="--card-accent: var(--clr-orange)">
+        <span class="feature-icon">🧑‍🦯</span>
+        <h3>Ragdoll Characters</h3>
+        <p>Humanoid ragdolls with hinge-jointed limbs. Watch them flop, spin, and react to every explosion realistically.</p>
+      </div>
+      <div class="feature-card" style="--card-accent: var(--clr-red)">
+        <span class="feature-icon">💥</span>
+        <h3>Explosions & Forces</h3>
+        <p>Radial blast forces, screen shake, and particle bursts. Every explosion feels devastating.</p>
+      </div>
+      <div class="feature-card" style="--card-accent: var(--clr-cyan)">
+        <span class="feature-icon">🖱️</span>
+        <h3>Grab & Interact</h3>
+        <p>Click to grab any object, throw it, pin it, freeze it. Full mouse-driven interaction with every entity.</p>
+      </div>
+      <div class="feature-card" style="--card-accent: var(--clr-yellow)">
+        <span class="feature-icon">🔫</span>
+        <h3>Arsenal of Weapons</h3>
+        <p>Pistols, rifles, rockets, grenades, swords, bats — each with unique physics and force profiles.</p>
+      </div>
+      <div class="feature-card" style="--card-accent: var(--clr-purple)">
+        <span class="feature-icon">💾</span>
+        <h3>Save Your Scenes</h3>
+        <p>Save your best contraptions to localStorage and reload them anytime. Share setups via JSON export.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── WEAPONS ───────────────────────────────────────────────────────────── -->
+<section id="weapons">
+  <div class="section-inner">
+    <div class="weapons-layout">
+      <div>
+        <p class="section-label">Arsenal</p>
+        <h2 class="section-title">Choose your weapon<br>of destruction</h2>
+        <p class="section-desc" style="margin-bottom:2rem">Every weapon has unique ballistics, recoil, and blast radius. Mix and match for maximum chaos.</p>
+        <a href="game.html" class="btn-primary" style="display:inline-block;text-decoration:none">▶ START PLAYING</a>
+      </div>
+
+      <div class="weapons-list">
+        <div class="weapon-row">
+          <span class="weapon-icon">🔫</span>
+          <div>
+            <div class="weapon-name">PISTOL</div>
+            <div class="weapon-desc">Single shot, reliable, fast</div>
+          </div>
+          <div class="weapon-bar-wrap">
+            <span class="weapon-bar-label">POWER</span>
+            <div class="weapon-bar"><div class="weapon-bar-fill" style="background:var(--clr-cyan);--target:45%"></div></div>
+          </div>
+        </div>
+        <div class="weapon-row">
+          <span class="weapon-icon">🪖</span>
+          <div>
+            <div class="weapon-name">ASSAULT RIFLE</div>
+            <div class="weapon-desc">Rapid fire, medium damage</div>
+          </div>
+          <div class="weapon-bar-wrap">
+            <span class="weapon-bar-label">POWER</span>
+            <div class="weapon-bar"><div class="weapon-bar-fill" style="background:var(--clr-green);--target:65%"></div></div>
+          </div>
+        </div>
+        <div class="weapon-row">
+          <span class="weapon-icon">💣</span>
+          <div>
+            <div class="weapon-name">GRENADE</div>
+            <div class="weapon-desc">Timed explosion, area damage</div>
+          </div>
+          <div class="weapon-bar-wrap">
+            <span class="weapon-bar-label">POWER</span>
+            <div class="weapon-bar"><div class="weapon-bar-fill" style="background:var(--clr-orange);--target:80%"></div></div>
+          </div>
+        </div>
+        <div class="weapon-row">
+          <span class="weapon-icon">🚀</span>
+          <div>
+            <div class="weapon-name">ROCKET LAUNCHER</div>
+            <div class="weapon-desc">Massive blast radius, screen shake</div>
+          </div>
+          <div class="weapon-bar-wrap">
+            <span class="weapon-bar-label">POWER</span>
+            <div class="weapon-bar"><div class="weapon-bar-fill" style="background:var(--clr-red);--target:100%"></div></div>
+          </div>
+        </div>
+        <div class="weapon-row">
+          <span class="weapon-icon">⚔️</span>
+          <div>
+            <div class="weapon-name">SWORD</div>
+            <div class="weapon-desc">Melee slice, precise force</div>
+          </div>
+          <div class="weapon-bar-wrap">
+            <span class="weapon-bar-label">POWER</span>
+            <div class="weapon-bar"><div class="weapon-bar-fill" style="background:var(--clr-purple);--target:55%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW TO PLAY ───────────────────────────────────────────────────────── -->
+<section id="how-to-play">
+  <div class="section-inner" style="text-align:center">
+    <p class="section-label" style="text-align:center">Getting Started</p>
+    <h2 class="section-title">Start causing chaos<br>in 4 steps</h2>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <span class="step-num">01</span>
+        <span class="step-icon">🍉</span>
+        <h4>OPEN THE GAME</h4>
+        <p>Click "Play Now" — the game loads instantly in your browser. No account, no download.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">02</span>
+        <span class="step-icon">🧑‍🦯</span>
+        <h4>PICK YOUR ENTITY</h4>
+        <p>Browse the side palette. Choose a ragdoll, weapon, or prop to spawn.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">03</span>
+        <span class="step-icon">🖱️</span>
+        <h4>CLICK TO SPAWN</h4>
+        <p>Click anywhere on the canvas to drop your selected item into the physics world.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">04</span>
+        <span class="step-icon">💥</span>
+        <h4>WATCH THE CHAOS</h4>
+        <p>Grab, throw, shoot, explode — let physics do the rest. Pure sandbox mayhem.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CONTROLS ──────────────────────────────────────────────────────────── -->
+<section id="controls">
+  <div class="section-inner">
+    <p class="section-label">Keyboard & Mouse</p>
+    <h2 class="section-title">Controls reference</h2>
+
+    <div class="controls-grid">
+      <div class="control-row"><span class="control-action">Spawn selected item</span><kbd class="kbd">Left Click</kbd></div>
+      <div class="control-row"><span class="control-action">Grab & drag object</span><kbd class="kbd">LMB + Drag</kbd></div>
+      <div class="control-row"><span class="control-action">Rotate object</span><kbd class="kbd">R</kbd></div>
+      <div class="control-row"><span class="control-action">Delete object</span><kbd class="kbd">Del</kbd></div>
+      <div class="control-row"><span class="control-action">Pause simulation</span><kbd class="kbd">P</kbd></div>
+      <div class="control-row"><span class="control-action">Clear all</span><kbd class="kbd">Ctrl+Del</kbd></div>
+      <div class="control-row"><span class="control-action">Pan camera</span><kbd class="kbd">Space+Drag</kbd></div>
+      <div class="control-row"><span class="control-action">Zoom in/out</span><kbd class="kbd">Scroll</kbd></div>
+      <div class="control-row"><span class="control-action">Save scene</span><kbd class="kbd">Ctrl+S</kbd></div>
+      <div class="control-row"><span class="control-action">Load scene</span><kbd class="kbd">Ctrl+O</kbd></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CTA ───────────────────────────────────────────────────────────────── -->
+<section id="cta">
+  <div class="section-inner">
+    <div class="cta-box" id="ctaBox">
+      <h2 class="cta-title">Ready to cause some<br><span style="color:var(--clr-green)">CHAOS?</span></h2>
+      <p class="cta-sub">Free forever. No sign-up. Runs in any browser.</p>
+      <a href="game.html" class="btn-primary" style="font-size:0.7rem;padding:1.2rem 3rem;text-decoration:none;display:inline-block">
+        🍉 PLAY MELON SANDBOX
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ────────────────────────────────────────────────────────────── -->
+<footer>
+  <span class="footer-logo">🍉 MELON SANDBOX</span>
+  <div class="footer-links">
+    <a href="https://github.com/sabilyent/melon-sandbox" target="_blank" rel="noopener">GitHub</a>
+    <a href="PRD.md" target="_blank">PRD</a>
+    <a href="README.md" target="_blank">README</a>
+    <a href="#features">Features</a>
+  </div>
+  <p class="footer-copy">
+    Fan-made browser clone · MIT License · Inspired by <a href="https://melonsandbox.com" target="_blank" rel="noopener" style="color:var(--clr-green);text-decoration:none">Melon Sandbox</a>
+  </p>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   STAR BACKGROUND CANVAS
+═══════════════════════════════════════════════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById('star-canvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+
+  function initStars() {
+    stars = [];
+    const count = Math.floor((canvas.width * canvas.height) / 6000);
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x:     Math.random() * canvas.width,
+        y:     Math.random() * canvas.height,
+        r:     Math.random() * 1.5 + 0.3,
+        alpha: Math.random() * 0.7 + 0.2,
+        speed: Math.random() * 0.0005 + 0.0002,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    t += 0.016;
+    for (const s of stars) {
+      const alpha = s.alpha * (0.6 + 0.4 * Math.sin(t * s.speed * 1000 + s.phase));
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  initStars();
+  draw();
+  window.addEventListener('resize', () => { resize(); initStars(); });
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOM CURSOR
+═══════════════════════════════════════════════════════════════════════════ */
+(function() {
+  const dot  = document.getElementById('cursorDot');
+  const ring = document.getElementById('cursorRing');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+  function animateCursor() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    dot.style.left  = mx + 'px';
+    dot.style.top   = my + 'px';
+    ring.style.left = rx + 'px';
+    ring.style.top  = ry + 'px';
+    requestAnimationFrame(animateCursor);
+  }
+  animateCursor();
+
+  document.querySelectorAll('a, button, .feature-card, .weapon-row').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      dot.style.width = dot.style.height = '14px';
+      dot.style.background = 'var(--clr-orange)';
+      ring.style.width = ring.style.height = '48px';
+    });
+    el.addEventListener('mouseleave', () => {
+      dot.style.width = dot.style.height = '8px';
+      dot.style.background = 'var(--clr-green)';
+      ring.style.width = ring.style.height = '32px';
+    });
+  });
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INTERSECTION OBSERVER HELPER
+═══════════════════════════════════════════════════════════════════════════ */
+function onVisible(selector, callback, threshold = 0.15) {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        callback(entry.target);
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold });
+  document.querySelectorAll(selector).forEach(el => obs.observe(el));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO ENTRANCE ANIMATIONS
+═══════════════════════════════════════════════════════════════════════════ */
+(function() {
+  // Badge pop in
+  anime({
+    targets: '#heroBadge',
+    opacity: [0, 1],
+    scale:   [0.8, 1],
+    duration: 600,
+    delay: 300,
+    easing: 'easeOutBack'
+  });
+
+  // Title lines slide up
+  anime({
+    targets: '#heroTitle',
+    opacity: [0, 1],
+    translateY: [60, 0],
+    duration: 800,
+    delay: 500,
+    easing: 'easeOutExpo'
+  });
+
+  // Title char-by-char shimmer
+  anime({
+    targets: '#titleLine1',
+    color: ['#4ade80', '#a78bfa', '#4ade80'],
+    duration: 3000,
+    delay: 1200,
+    loop: true,
+    easing: 'easeInOutSine'
+  });
+
+  // Sub fade
+  anime({
+    targets: '#heroSub',
+    opacity: [0, 1],
+    translateY: [30, 0],
+    duration: 700,
+    delay: 700,
+    easing: 'easeOutExpo'
+  });
+
+  // Buttons
+  anime({
+    targets: '#heroButtons',
+    opacity: [0, 1],
+    translateY: [20, 0],
+    duration: 600,
+    delay: 900,
+    easing: 'easeOutExpo'
+  });
+
+  // Play button pulse
+  anime({
+    targets: '#heroPlayBtn',
+    scale: [1, 1.04, 1],
+    duration: 1800,
+    delay: 1400,
+    loop: true,
+    easing: 'easeInOutSine'
+  });
+
+  // Hero image slide up
+  anime({
+    targets: '#heroImage',
+    opacity: [0, 1],
+    translateY: [60, 0],
+    duration: 900,
+    delay: 1100,
+    easing: 'easeOutExpo'
+  });
+
+  // Floating pixel particles
+  document.querySelectorAll('.pixel-particle').forEach((el, i) => {
+    anime({
+      targets: el,
+      opacity: [0, 0.8, 0],
+      translateY: [0, -80, -160],
+      translateX: [0, (Math.random() - 0.5) * 60],
+      rotate: [0, Math.random() * 360],
+      scale:  [0, 1, 0],
+      duration: 3000 + Math.random() * 2000,
+      delay:  1500 + i * 300,
+      loop: true,
+      easing: 'easeInOutQuad'
+    });
+  });
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATS COUNTER ANIMATION
+═══════════════════════════════════════════════════════════════════════════ */
+onVisible('.stat-item', el => {
+  anime({
+    targets: el,
+    opacity: [0, 1],
+    translateY: [30, 0],
+    duration: 600,
+    easing: 'easeOutExpo'
+  });
+
+  const num   = el.querySelector('.stat-num');
+  const target = parseInt(num.dataset.target);
+  const suffix = target === 0 ? '' : (num.dataset.target.includes('%') ? '%' : '+');
+
+  anime({
+    targets: { val: 0 },
+    val: target,
+    duration: 1500,
+    delay: 200,
+    easing: 'easeOutExpo',
+    update: function(anim) {
+      num.textContent = Math.round(anim.animations[0].currentValue) + suffix;
+    }
+  });
+}, 0.3);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FEATURE CARDS STAGGER
+═══════════════════════════════════════════════════════════════════════════ */
+(function() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const cards = entry.target.querySelectorAll('.feature-card');
+        anime({
+          targets: cards,
+          opacity: [0, 1],
+          translateY: [40, 0],
+          duration: 700,
+          delay: anime.stagger(120),
+          easing: 'easeOutExpo'
+        });
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  const grid = document.querySelector('.features-grid');
+  if (grid) obs.observe(grid);
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WEAPON ROWS STAGGER
+═══════════════════════════════════════════════════════════════════════════ */
+(function() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const rows = entry.target.querySelectorAll('.weapon-row');
+        anime({
+          targets: rows,
+          opacity: [0, 1],
+          translateX: [-30, 0],
+          duration: 600,
+          delay: anime.stagger(100),
+          easing: 'easeOutExpo'
+        });
+
+        // Animate power bars after rows appear
+        setTimeout(() => {
+          document.querySelectorAll('.weapon-bar-fill').forEach(bar => {
+            const target = bar.style.getPropertyValue('--target') || '50%';
+            anime({
+              targets: bar,
+              width: [0, target],
+              duration: 1000,
+              easing: 'easeOutExpo'
+            });
+          });
+        }, 400);
+
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  const list = document.querySelector('.weapons-list');
+  if (list) obs.observe(list);
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STEPS STAGGER
+═══════════════════════════════════════════════════════════════════════════ */
+(function() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        anime({
+          targets: '.step-card',
+          opacity: [0, 1],
+          translateY: [40, 0],
+          scale: [0.9, 1],
+          duration: 700,
+          delay: anime.stagger(150),
+          easing: 'easeOutBack'
+        });
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  const grid = document.querySelector('.steps-grid');
+  if (grid) obs.observe(grid);
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTROLS ROWS
+═══════════════════════════════════════════════════════════════════════════ */
+(function() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        anime({
+          targets: '.control-row',
+          opacity: [0, 1],
+          translateX: [-20, 0],
+          duration: 500,
+          delay: anime.stagger(60),
+          easing: 'easeOutExpo'
+        });
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  const grid = document.querySelector('.controls-grid');
+  if (grid) obs.observe(grid);
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CTA BOX
+═══════════════════════════════════════════════════════════════════════════ */
+onVisible('#ctaBox', el => {
+  anime({
+    targets: el,
+    opacity: [0, 1],
+    scale: [0.94, 1],
+    duration: 800,
+    easing: 'easeOutBack'
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAV SCROLL BEHAVIOUR
+═══════════════════════════════════════════════════════════════════════════ */
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('navbar');
+  if (window.scrollY > 60) {
+    nav.style.boxShadow = '0 4px 30px rgba(0,0,0,0.5)';
+  } else {
+    nav.style.boxShadow = 'none';
+  }
+}, { passive: true });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLAY BUTTON EXPLOSION EFFECT (click burst)
+═══════════════════════════════════════════════════════════════════════════ */
+document.getElementById('heroPlayBtn').addEventListener('click', function(e) {
+  e.preventDefault();
+  const rect = this.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  // Create burst particles
+  for (let i = 0; i < 16; i++) {
+    const p = document.createElement('div');
+    p.style.cssText = `
+      position:fixed; left:${cx}px; top:${cy}px;
+      width:${4 + Math.random()*6}px; height:${4+Math.random()*6}px;
+      border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
+      background:${['#4ade80','#fb923c','#fbbf24','#f87171','#22d3ee'][Math.floor(Math.random()*5)]};
+      pointer-events:none; z-index:9999;
+      transform:translate(-50%,-50%);
+    `;
+    document.body.appendChild(p);
+
+    const angle  = (i / 16) * Math.PI * 2;
+    const dist   = 60 + Math.random() * 80;
+    anime({
+      targets: p,
+      translateX: Math.cos(angle) * dist,
+      translateY: Math.sin(angle) * dist,
+      opacity: [1, 0],
+      scale: [1, 0],
+      duration: 600 + Math.random() * 400,
+      easing: 'easeOutExpo',
+      complete: () => p.remove()
+    });
+  }
+
+  setTimeout(() => { window.location.href = this.href; }, 400);
+});
+</script>
+
+</body>
+</html>

@@ -413,6 +413,99 @@ class Game {
 
     // Space = pan
     window.addEventListener('keydown', e => this._handleKey(e));
+
+    // ── Touch Events ──
+    let lastTouchDist = 0;
+    let lastTouchMid = null;
+
+    c.addEventListener('touchstart', e => {
+      e.preventDefault();
+      const rect = c.getBoundingClientRect();
+
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        this.mouseScreen.x = touch.clientX - rect.left;
+        this.mouseScreen.y = touch.clientY - rect.top;
+        this.mouseWorld    = this.camera.toWorld(this.mouseScreen.x, this.mouseScreen.y);
+        this.ghostPos      = this.mouseWorld.clone();
+        this.mouseDown     = true;
+        this.aimStart      = this.mouseWorld.clone();
+
+        this._handleToolDown(this.mouseWorld);
+      } else if (e.touches.length === 2) {
+        // Multi-touch: setup pinch & pan
+        this.grabbedParticle = null; // drop any grabbed object
+        this.mouseDown = false;
+        const t1 = e.touches[0], t2 = e.touches[1];
+        const dx = t2.clientX - t1.clientX;
+        const dy = t2.clientY - t1.clientY;
+        lastTouchDist = Math.hypot(dx, dy);
+        lastTouchMid  = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top
+        };
+      }
+    }, { passive: false });
+
+    c.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const rect = c.getBoundingClientRect();
+
+      if (e.touches.length === 1 && !lastTouchMid) {
+        const touch = e.touches[0];
+        this.mouseScreen.x = touch.clientX - rect.left;
+        this.mouseScreen.y = touch.clientY - rect.top;
+        this.mouseWorld    = this.camera.toWorld(this.mouseScreen.x, this.mouseScreen.y);
+        this.ghostPos      = this.mouseWorld.clone();
+
+        if (this.grabbedParticle && !this.world.paused) {
+          const mw = this.mouseWorld;
+          this.grabbedParticle.pos.x += (mw.x - this.grabbedParticle.pos.x) * 0.55;
+          this.grabbedParticle.pos.y += (mw.y - this.grabbedParticle.pos.y) * 0.55;
+        }
+      } else if (e.touches.length === 2) {
+        const t1 = e.touches[0], t2 = e.touches[1];
+        const dx = t2.clientX - t1.clientX;
+        const dy = t2.clientY - t1.clientY;
+        const dist = Math.hypot(dx, dy);
+        const mid  = {
+          x: (t1.clientX + t2.clientX) / 2 - rect.left,
+          y: (t1.clientY + t2.clientY) / 2 - rect.top
+        };
+
+        if (lastTouchDist > 0 && dist > 0) {
+          // Pinch Zoom
+          const factor = dist / lastTouchDist;
+          this.camera.zoomAt(mid.x, mid.y, factor);
+
+          // Pan
+          if (lastTouchMid) {
+            const pdx = mid.x - lastTouchMid.x;
+            const pdy = mid.y - lastTouchMid.y;
+            this.camera.x -= pdx / this.camera.zoom;
+            this.camera.y -= pdy / this.camera.zoom;
+          }
+        }
+        lastTouchDist = dist;
+        lastTouchMid  = mid;
+      }
+    }, { passive: false });
+
+    const handleTouchEnd = e => {
+      if (e.touches.length === 0) {
+        this.mouseDown = false;
+        this._handleToolUp();
+        if (this.grabbedParticle) this.grabbedParticle = null;
+        lastTouchDist = 0;
+        lastTouchMid  = null;
+      } else if (e.touches.length === 1) {
+        lastTouchDist = 0;
+        lastTouchMid  = null;
+      }
+    };
+
+    c.addEventListener('touchend', handleTouchEnd, { passive: true });
+    c.addEventListener('touchcancel', handleTouchEnd, { passive: true });
   }
 
   _handleToolDown(wpos) {

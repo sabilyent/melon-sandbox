@@ -513,6 +513,7 @@ html, body {
     </div>
 
     <div class="topbar-right">
+      <button class="home-btn" style="border-color:var(--green);color:var(--green);" onclick="checkAndShowInstallPrompt()">📲 INSTALL</button>
       <a href="index.html" class="home-btn">◀ HOME</a>
     </div>
   </nav>
@@ -629,10 +630,11 @@ html, body {
   <div class="pwa-box">
     <div class="pwa-icon">🍉</div>
     <h3>INSTALL MELON SANDBOX</h3>
-    <p>Install the app for full-screen offline gameplay & instant launching!</p>
+    <p>Simpan & pasang game ini untuk main full-screen & offline tanpa browser!</p>
+    <div id="pwa-guide-text" style="display:none; background:rgba(255,255,255,0.06); border:1px dashed var(--green); border-radius:8px; padding:0.6rem; margin-bottom:1rem; font-size:0.72rem; color:var(--text); text-align:left; line-height:1.6;"></div>
     <div class="pwa-actions">
-      <button id="pwa-install-btn" class="pwa-btn primary">📲 INSTALL APP</button>
-      <button id="pwa-dismiss-btn" class="pwa-btn secondary">LATER</button>
+      <button id="pwa-install-btn" class="pwa-btn primary">📲 INSTALL / SIMPAN</button>
+      <button id="pwa-dismiss-btn" class="pwa-btn secondary">NANTI</button>
     </div>
   </div>
 </div>
@@ -822,7 +824,7 @@ setTimeout(() => {
 
 window.addEventListener('resize', updateTipBar);
 
-// ── PWA SERVICE WORKER & INSTALL PROMPT ────────────────────────────────────
+// ── PWA SERVICE WORKER & ALWAYS-ON INSTALL PROMPT ─────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
@@ -832,32 +834,54 @@ if ('serviceWorker' in navigator) {
 }
 
 let deferredPrompt = null;
-const pwaModal   = document.getElementById('pwa-install-modal');
-const installBtn = document.getElementById('pwa-install-btn');
-const dismissBtn = document.getElementById('pwa-dismiss-btn');
+const pwaModal     = document.getElementById('pwa-install-modal');
+const installBtn   = document.getElementById('pwa-install-btn');
+const dismissBtn   = document.getElementById('pwa-dismiss-btn');
+const pwaGuide     = document.getElementById('pwa-guide-text');
 
-// Check if app is running in standalone mode (already installed)
+// Check if app is running in standalone mode (already installed & opened as PWA)
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
+// Capture native install prompt
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
-  // Automatically show install prompt when opening game.html if not already installed/dismissed
-  if (!isStandalone && !sessionStorage.getItem('pwa_prompt_dismissed')) {
-    setTimeout(() => {
-      if (pwaModal) pwaModal.style.display = 'flex';
-    }, 800);
-  }
 });
+
+// Show popup ALWAYS when entering game.html if website is opened in browser (not standalone app)
+function checkAndShowInstallPrompt() {
+  if (!isStandalone && pwaModal) {
+    pwaModal.style.display = 'flex';
+  }
+}
+
+// Trigger popup shortly after loading game.html
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', () => setTimeout(checkAndShowInstallPrompt, 600));
+} else {
+  setTimeout(checkAndShowInstallPrompt, 600);
+}
 
 if (installBtn) {
   installBtn.addEventListener('click', async () => {
-    if (pwaModal) pwaModal.style.display = 'none';
     if (deferredPrompt) {
+      // Browser native PWA prompt available
       deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
-      console.log('Install prompt result:', choice.outcome);
+      console.log('User choice:', choice.outcome);
       deferredPrompt = null;
+      if (pwaModal) pwaModal.style.display = 'none';
+    } else {
+      // Manual instruction guide fallback (iOS Safari / Chrome fallback)
+      if (pwaGuide) {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        pwaGuide.style.display = 'block';
+        if (isIOS) {
+          pwaGuide.innerHTML = '📌 <b>Cara Simpan di iOS Safari:</b><br>1. Tekan butang Share <b>⎋</b><br>2. Pilih <b>"Add to Home Screen ➕"</b>';
+        } else {
+          pwaGuide.innerHTML = '📌 <b>Cara Simpan / Install:</b><br>1. Tekan menu browser <b>⋮</b> atau <b>⋯</b><br>2. Pilih <b>"Install App"</b> atau <b>"Add to Home Screen"</b>';
+        }
+      }
     }
   });
 }
@@ -865,13 +889,12 @@ if (installBtn) {
 if (dismissBtn) {
   dismissBtn.addEventListener('click', () => {
     if (pwaModal) pwaModal.style.display = 'none';
-    sessionStorage.setItem('pwa_prompt_dismissed', 'true');
   });
 }
 
 window.addEventListener('appinstalled', () => {
   if (pwaModal) pwaModal.style.display = 'none';
-  console.log('Melon Sandbox app installed!');
+  console.log('Melon Sandbox successfully installed!');
 });
 </script>
 </body>

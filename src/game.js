@@ -264,13 +264,24 @@ class Game {
   }
 
   detonateAll() {
-    const toExplode = [...this.bombs];
-    toExplode.forEach((b, i) => {
-      setTimeout(() => {
-        if (b.alive) this._explodeEntity(b);
-      }, i * 150);
-    });
-    this.bombs = [];
+    // Find all explosive entities (bombs, grenades, mines, barrels)
+    const toExplode = this.entities.filter(e => 
+      e.alive && (e.tag === 'explosive' || e.type === 'bomb' || e.type === 'grenade' || e.type === 'mine' || e.type === 'barrel' || this.bombs.includes(e))
+    );
+
+    if (toExplode.length > 0) {
+      toExplode.forEach((b, i) => {
+        setTimeout(() => {
+          if (b.alive) this._explodeEntity(b);
+        }, i * 100);
+      });
+      this.bombs = [];
+    } else {
+      // Fallback: Massive explosion at camera center if no explosives exist
+      const cx = this.camera.x;
+      const cy = this.camera.y;
+      this._explode(cx, cy, 260, 25, { label: '💣 BOOM!' });
+    }
   }
 
   // ── PROJECTILE COLLISION ──────────────────────────────────────────────────

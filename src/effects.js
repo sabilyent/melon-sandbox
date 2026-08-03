@@ -188,10 +188,124 @@ class ScreenShake {
   }
 }
 
+// ─── BLOOD DROPLET & STAIN ───────────────────────────────────────────────────
+class BloodParticle {
+  constructor(x, y, opts = {}) {
+    const angle = opts.angle ?? (Math.random() * Math.PI * 2);
+    const speed = (opts.speed ?? 180) * (0.3 + Math.random() * 0.9);
+    this.x     = x;
+    this.y     = y;
+    this.vx    = Math.cos(angle) * speed;
+    this.vy    = Math.sin(angle) * speed - 40;
+    this.radius= opts.radius ?? (2.5 + Math.random() * 3);
+    this.color = opts.color ?? '#d32f2f';
+    this.life  = opts.life ?? (0.6 + Math.random() * 0.8);
+    this.maxLife = this.life;
+    this.groundY = opts.groundY ?? 560;
+    this.splatted = false;
+  }
+
+  update(dt) {
+    if (this.splatted) return;
+    this.x  += this.vx * dt;
+    this.y  += this.vy * dt;
+    this.vy += 650 * dt; // gravity
+    this.vx *= 0.96;
+
+    if (this.y >= this.groundY) {
+      this.y = this.groundY;
+      this.splatted = true;
+    }
+    this.life -= dt;
+  }
+
+  draw(ctx) {
+    if (this.splatted) return;
+    const t = Math.max(0, this.life / this.maxLife);
+    ctx.save();
+    ctx.globalAlpha = t;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius * t, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  get dead() { return this.life <= 0 || this.splatted; }
+}
+
+class BloodStain {
+  constructor(x, y, color = '#b71c1c', radius = 6) {
+    this.x = x + (Math.random() - 0.5) * 6;
+    this.y = y;
+    this.rx = radius * (0.8 + Math.random() * 0.6);
+    this.ry = radius * (0.3 + Math.random() * 0.3);
+    this.color = color;
+    this.alpha = 0.85;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y, this.rx, this.ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ─── DEBRIS / BONE SPLINTER ──────────────────────────────────────────────────
+class DebrisParticle {
+  constructor(x, y, opts = {}) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 100 + Math.random() * 220;
+    this.x     = x; this.y = y;
+    this.vx    = Math.cos(angle) * speed;
+    this.vy    = Math.sin(angle) * speed - 80;
+    this.rot   = Math.random() * Math.PI * 2;
+    this.vrot  = (Math.random() - 0.5) * 12;
+    this.w     = opts.w ?? (6 + Math.random() * 10);
+    this.h     = opts.h ?? (4 + Math.random() * 6);
+    this.color = opts.color ?? '#8b6914';
+    this.life  = opts.life ?? (1.0 + Math.random() * 0.8);
+    this.maxLife = this.life;
+    this.groundY = opts.groundY ?? 560;
+  }
+
+  update(dt) {
+    this.x   += this.vx * dt;
+    this.y   += this.vy * dt;
+    this.vy  += 700 * dt;
+    this.rot += this.vrot * dt;
+    this.vx  *= 0.97;
+    if (this.y >= this.groundY - 3) {
+      this.y = this.groundY - 3;
+      this.vy = -this.vy * 0.3;
+      this.vx *= 0.7;
+    }
+    this.life -= dt;
+  }
+
+  draw(ctx) {
+    const t = Math.max(0, this.life / this.maxLife);
+    ctx.save();
+    ctx.globalAlpha = t;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    ctx.fillStyle = this.color;
+    ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+    ctx.restore();
+  }
+
+  get dead() { return this.life <= 0; }
+}
+
 // ─── EFFECTS MANAGER ──────────────────────────────────────────────────────────
 class EffectsManager {
   constructor() {
     this.effects = [];
+    this.stains  = []; // persistent ground stains
     this.shake   = new ScreenShake();
   }
 
@@ -236,6 +350,37 @@ class EffectsManager {
     this.shake.add(2);
   }
 
+  blood(x, y, color = '#d32f2f', count = 12, groundY = 560) {
+    for (let i = 0; i < count; i++) {
+      const bp = new BloodParticle(x, y, { color, groundY });
+      this.effects.push(bp);
+    }
+    // Also create ground stains
+    for (let i = 0; i < Math.min(count, 4); i++) {
+      if (this.stains.length < 150) {
+        this.stains.push(new BloodStain(x + (Math.random()-0.5)*30, groundY, color, 4 + Math.random()*8));
+      }
+    }
+  }
+
+  fracture(x, y, label = '🦴 PATAH!') {
+    this.effects.push(new TextPop(x, y - 10, label, {
+      color: '#ffeb3b', font: 'bold 16px "Press Start 2P", monospace'
+    }));
+    for (let i = 0; i < 8; i++) {
+      this.effects.push(new DebrisParticle(x, y, {
+        color: '#e0e0e0', w: 5, h: 4, life: 0.8
+      }));
+    }
+    this.shake.add(4);
+  }
+
+  debris(x, y, color = '#8b6914', count = 10, groundY = 560) {
+    for (let i = 0; i < count; i++) {
+      this.effects.push(new DebrisParticle(x, y, { color, groundY }));
+    }
+  }
+
   spawn(x, y) {
     for (let i = 0; i < 6; i++) {
       this.effects.push(new Spark(x, y, {
@@ -258,6 +403,10 @@ class EffectsManager {
   }
 
   draw(ctx) {
+    // Draw ground stains first
+    for (const s of this.stains) s.draw(ctx);
+    // Draw dynamic particles
     for (const e of this.effects) e.draw(ctx);
   }
 }
+

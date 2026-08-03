@@ -15,27 +15,38 @@ const RAGDOLL_PRESETS = {
 // ─── RAGDOLL ──────────────────────────────────────────────────────────────────
 class Ragdoll {
   constructor(x, y, world, preset = 'human') {
-    this.world   = world;
-    this.preset  = preset;
-    this.colors  = RAGDOLL_PRESETS[preset] || RAGDOLL_PRESETS.human;
-    this.particles   = [];
-    this.constraints = [];
-    this.alive   = true;
-    this.type    = 'ragdoll';
+    this.world        = world;
+    this.preset       = preset;
+    this.colors       = RAGDOLL_PRESETS[preset] || RAGDOLL_PRESETS.human;
+    this.particles    = [];
+    this.constraints  = [];
+    this.alive        = true;
+    this.health       = 100;
+    this.maxHealth    = 100;
+    this.stunTimer    = 0;
+    this.damageStains = []; // blood/bruise marks on limbs
+    this.type         = 'ragdoll';
+
+    const bColors = {
+      human: '#c62828', zombie: '#33691e', skeleton: '#e0e0e0', melon: '#e53935', ninja: '#b71c1c'
+    };
+    this.bloodColor = bColors[preset] || '#c62828';
+
     this._build(x, y);
   }
 
   _p(dx, dy, r, m) {
-    const p     = new Particle(this.x0 + dx, this.y0 + dy, r, m);
-    p.group     = this;
+    const p       = new Particle(this.x0 + dx, this.y0 + dy, r, m);
+    p.group       = this;
     p.restitution = 0.28;
     this.particles.push(p);
     this.world.particles.push(p);
     return p;
   }
 
-  _c(a, b, s = 0.95) {
+  _c(a, b, s = 0.95, breakRatio = 2.4) {
     const c = new DistConstraint(a, b, null, s);
+    c.breakAt = breakRatio;
     this.constraints.push(c);
     this.world.constraints.push(c);
     return c;
@@ -68,49 +79,138 @@ class Ragdoll {
     this.footR   = this._p(  14,  68,  6, 0.8);
 
     // Spine constraints
-    this._c(this.head,  this.neck,  0.97);
-    this._c(this.neck,  this.chest, 0.97);
-    this._c(this.chest, this.belly, 0.95);
-    this._c(this.belly, this.hips,  0.95);
+    this._c(this.head,  this.neck,  0.97, 2.2);
+    this._c(this.neck,  this.chest, 0.97, 2.2);
+    this._c(this.chest, this.belly, 0.95, 2.5);
+    this._c(this.belly, this.hips,  0.95, 2.5);
 
     // Shoulder girdle
-    this._c(this.neck,  this.shlL, 0.95);
-    this._c(this.neck,  this.shlR, 0.95);
-    this._c(this.shlL,  this.shlR, 0.90);
-    this._c(this.chest, this.shlL, 0.55);
-    this._c(this.chest, this.shlR, 0.55);
+    this._c(this.neck,  this.shlL, 0.95, 2.3);
+    this._c(this.neck,  this.shlR, 0.95, 2.3);
+    this._c(this.shlL,  this.shlR, 0.90, 2.5);
+    this._c(this.chest, this.shlL, 0.55, 2.5);
+    this._c(this.chest, this.shlR, 0.55, 2.5);
 
     // Arms
-    this._c(this.shlL, this.elbL, 0.95);
-    this._c(this.shlR, this.elbR, 0.95);
-    this._c(this.elbL, this.wrsL, 0.95);
-    this._c(this.elbR, this.wrsR, 0.95);
+    this._c(this.shlL, this.elbL, 0.95, 2.2);
+    this._c(this.shlR, this.elbR, 0.95, 2.2);
+    this._c(this.elbL, this.wrsL, 0.95, 2.2);
+    this._c(this.elbR, this.wrsR, 0.95, 2.2);
 
     // Hip girdle
-    this._c(this.hips,  this.hipL, 0.97);
-    this._c(this.hips,  this.hipR, 0.97);
-    this._c(this.hipL,  this.hipR, 0.97);
-    this._c(this.belly, this.hipL, 0.50);
-    this._c(this.belly, this.hipR, 0.50);
+    this._c(this.hips,  this.hipL, 0.97, 2.5);
+    this._c(this.hips,  this.hipR, 0.97, 2.5);
+    this._c(this.hipL,  this.hipR, 0.97, 2.5);
+    this._c(this.belly, this.hipL, 0.50, 2.5);
+    this._c(this.belly, this.hipR, 0.50, 2.5);
 
     // Legs
-    this._c(this.hipL,  this.kneeL, 0.95);
-    this._c(this.hipR,  this.kneeR, 0.95);
-    this._c(this.kneeL, this.footL, 0.95);
-    this._c(this.kneeR, this.footR, 0.95);
+    this._c(this.hipL,  this.kneeL, 0.95, 2.3);
+    this._c(this.hipR,  this.kneeR, 0.95, 2.3);
+    this._c(this.kneeL, this.footL, 0.95, 2.3);
+    this._c(this.kneeR, this.footR, 0.95, 2.3);
 
     // Cross-braces for torso rigidity
-    this._c(this.neck,  this.belly, 0.40);
-    this._c(this.chest, this.hips,  0.40);
-    this._c(this.shlL,  this.belly, 0.25);
-    this._c(this.shlR,  this.belly, 0.25);
-    this._c(this.hipL,  this.kneeR, 0.20);
-    this._c(this.hipR,  this.kneeL, 0.20);
+    this._c(this.neck,  this.belly, 0.40, 3.0);
+    this._c(this.chest, this.hips,  0.40, 3.0);
+    this._c(this.shlL,  this.belly, 0.25, 3.0);
+    this._c(this.shlR,  this.belly, 0.25, 3.0);
+    this._c(this.hipL,  this.kneeR, 0.20, 3.0);
+    this._c(this.hipR,  this.kneeL, 0.20, 3.0);
+  }
+
+  update(dt) {
+    if (this.stunTimer > 0) this.stunTimer -= dt;
+
+    // Upright Standing Active Posture Controller (Melon Sandbox physics)
+    if (this.alive && this.health > 15 && this.stunTimer <= 0) {
+      this._applyUprightBalance(dt);
+    }
+
+    // Check broken constraints (joint fractures / dismemberment)
+    for (const c of this.constraints) {
+      if (c.broken && !c._notified) {
+        c._notified = true;
+        this.takeDamage(20, c.a.pos, c.a);
+        if (this.world.effects) {
+          this.world.effects.fracture(c.a.pos.x, c.a.pos.y, '🦴 PATAH!');
+        }
+      }
+    }
+  }
+
+  _applyUprightBalance(dt) {
+    const head  = this.head, chest = this.chest, hips = this.hips;
+    const footL = this.footL, footR = this.footR;
+    const kneeL = this.kneeL, kneeR = this.kneeR;
+
+    if (!head || !chest || !hips) return;
+
+    // Upright torque / vertical spine spring
+    const targetY = hips.pos.y - 90;
+    const diffY   = targetY - head.pos.y;
+    if (diffY < 0) {
+      head.pos.y  += diffY * 0.12;
+      chest.pos.y += diffY * 0.08;
+    }
+
+    // Spine horizontal stabilization
+    const diffX = hips.pos.x - head.pos.x;
+    head.pos.x  += diffX * 0.08;
+    chest.pos.x += diffX * 0.05;
+
+    // Feet ground standing support
+    const groundY = this.world.groundY;
+    if (footL && footR) {
+      const feetGrounded = (footL.pos.y >= groundY - 14) || (footR.pos.y >= groundY - 14);
+      if (feetGrounded) {
+        const hipTargetY = groundY - 66;
+        const hipDiffY   = hipTargetY - hips.pos.y;
+        if (hipDiffY < 0) hips.pos.y += hipDiffY * 0.10;
+
+        if (kneeL) kneeL.pos.y = Math.min(kneeL.pos.y, groundY - 28);
+        if (kneeR) kneeR.pos.y = Math.min(kneeR.pos.y, groundY - 28);
+
+        // Keep stance stable
+        footL.pos.x += (hips.pos.x - 16 - footL.pos.x) * 0.08;
+        footR.pos.x += (hips.pos.x + 16 - footR.pos.x) * 0.08;
+      }
+    }
+  }
+
+  takeDamage(amount, hitPos, hitParticle) {
+    if (this.health <= 0) return;
+    this.health -= amount;
+
+    // Record visual blood stain on limb
+    const hp = hitPos || (hitParticle ? hitParticle.pos : this.head.pos);
+    this.damageStains.push({
+      x: hp.x, y: hp.y, r: 4 + Math.random() * 5, color: this.bloodColor
+    });
+
+    // Knock off balance on hard hit
+    if (amount > 12) {
+      this.stunTimer = 1.0 + Math.min(amount * 0.03, 2.8);
+    }
+
+    // Blood spurt FX
+    if (this.world.effects) {
+      this.world.effects.blood(hp.x, hp.y, this.bloodColor, Math.ceil(amount / 3.5), this.world.groundY);
+    }
+
+    if (this.health <= 0) {
+      this.alive = false;
+      this.stunTimer = Infinity;
+      if (this.world.effects) {
+        this.world.effects.pop(this.head.pos.x, this.head.pos.y - 20, '☠ DEAD!', '#f44336');
+      }
+    }
   }
 
   draw(ctx) {
     const c = this.colors;
     const seg = (a, b, w, col, cap = 'round') => {
+      if (!a || !b) return;
       ctx.beginPath();
       ctx.moveTo(a.pos.x, a.pos.y);
       ctx.lineTo(b.pos.x, b.pos.y);
@@ -131,6 +231,7 @@ class Ragdoll {
 
     // Shoes (foot caps)
     const drawShoe = (foot, knee) => {
+      if (!foot || !knee) return;
       const dir = foot.pos.sub(knee.pos).norm().mul(6);
       ctx.beginPath();
       ctx.moveTo(foot.pos.x, foot.pos.y);
@@ -156,46 +257,80 @@ class Ragdoll {
     seg(this.elbR, this.wrsR, 8, c.skin);
 
     // Head
-    ctx.beginPath();
-    ctx.arc(this.head.pos.x, this.head.pos.y, 14, 0, Math.PI * 2);
-    ctx.fillStyle   = c.skin;
-    ctx.shadowColor = 'rgba(0,0,0,0.4)';
-    ctx.shadowBlur  = 4;
-    ctx.fill();
-    ctx.shadowBlur  = 0;
-    ctx.strokeStyle = this._shade(c.skin, -30);
-    ctx.lineWidth   = 1.5;
-    ctx.stroke();
-
-    // Hair
-    if (c.hair) {
-      const headToNeck = this.neck.pos.sub(this.head.pos).norm();
-      const angle = Math.atan2(headToNeck.y, headToNeck.x);
+    if (this.head) {
       ctx.beginPath();
-      ctx.arc(this.head.pos.x, this.head.pos.y, 14, angle + 0.2, angle + Math.PI - 0.2);
-      ctx.fillStyle = c.hair;
+      ctx.arc(this.head.pos.x, this.head.pos.y, 14, 0, Math.PI * 2);
+      ctx.fillStyle   = c.skin;
+      ctx.shadowColor = 'rgba(0,0,0,0.4)';
+      ctx.shadowBlur  = 4;
       ctx.fill();
+      ctx.shadowBlur  = 0;
+      ctx.strokeStyle = this._shade(c.skin, -30);
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+
+      // Hair
+      if (c.hair && this.neck) {
+        const headToNeck = this.neck.pos.sub(this.head.pos).norm();
+        const angle = Math.atan2(headToNeck.y, headToNeck.x);
+        ctx.beginPath();
+        ctx.arc(this.head.pos.x, this.head.pos.y, 14, angle + 0.2, angle + Math.PI - 0.2);
+        ctx.fillStyle = c.hair;
+        ctx.fill();
+      }
+
+      // Eyes
+      if (this.neck) {
+        const fwd  = this.neck.pos.sub(this.head.pos).norm();
+        const perp = fwd.perp();
+        const eyeOff = 5.5, eyeDn = 3;
+        const eyeL = this.head.pos.add(perp.mul(-eyeOff)).add(fwd.mul(-eyeDn));
+        const eyeR = this.head.pos.add(perp.mul( eyeOff)).add(fwd.mul(-eyeDn));
+
+        if (this.health <= 0) {
+          const drawDeadEye = (ep) => {
+            ctx.beginPath();
+            ctx.moveTo(ep.x - 3, ep.y - 3); ctx.lineTo(ep.x + 3, ep.y + 3);
+            ctx.moveTo(ep.x + 3, ep.y - 3); ctx.lineTo(ep.x - 3, ep.y + 3);
+            ctx.strokeStyle = '#d32f2f'; ctx.lineWidth = 2; ctx.stroke();
+          };
+          drawDeadEye(eyeL); drawDeadEye(eyeR);
+        } else {
+          const drawEye = (ep) => {
+            ctx.beginPath(); ctx.arc(ep.x, ep.y, 3.2, 0, Math.PI*2);
+            ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.beginPath(); ctx.arc(ep.x + fwd.x*0.6, ep.y + fwd.y*0.6, 2, 0, Math.PI*2);
+            ctx.fillStyle = c.eyeColor; ctx.fill();
+          };
+          drawEye(eyeL); drawEye(eyeR);
+        }
+      }
     }
 
-    // Eyes
-    const fwd  = this.neck.pos.sub(this.head.pos).norm();
-    const perp = fwd.perp();
-    const eyeOff = 5.5, eyeDn = 3;
-    const eyeL = this.head.pos.add(perp.mul(-eyeOff)).add(fwd.mul(-eyeDn));
-    const eyeR = this.head.pos.add(perp.mul( eyeOff)).add(fwd.mul(-eyeDn));
+    // Blood stains on ragdoll limbs
+    for (const ds of this.damageStains) {
+      ctx.beginPath();
+      ctx.arc(ds.x, ds.y, ds.r, 0, Math.PI * 2);
+      ctx.fillStyle = ds.color;
+      ctx.globalAlpha = 0.8;
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
 
-    const drawEye = (ep) => {
-      ctx.beginPath(); ctx.arc(ep.x, ep.y, 3.2, 0, Math.PI*2);
-      ctx.fillStyle = '#fff'; ctx.fill();
-      ctx.beginPath(); ctx.arc(ep.x + fwd.x*0.6, ep.y + fwd.y*0.6, 2, 0, Math.PI*2);
-      ctx.fillStyle = c.eyeColor; ctx.fill();
-    };
-    drawEye(eyeL);
-    drawEye(eyeR);
+    // Health bar
+    if (this.health < this.maxHealth && this.head) {
+      const hx = this.head.pos.x - 16;
+      const hy = this.head.pos.y - 24;
+      const pct = Math.max(0, this.health / this.maxHealth);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(hx, hy, 32, 5);
+      ctx.fillStyle = pct > 0.5 ? '#4ade80' : pct > 0.25 ? '#fb923c' : '#f87171';
+      ctx.fillRect(hx, hy, 32 * pct, 5);
+    }
 
-    // Zombie drool / skeleton detail
-    if (this.preset === 'zombie') {
-      const mouthPos = this.head.pos.add(fwd.mul(-6));
+    // Zombie drool
+    if (this.preset === 'zombie' && this.health > 0) {
+      const mouthPos = this.head.pos.add(this.neck.pos.sub(this.head.pos).norm().mul(-6));
       ctx.beginPath();
       ctx.arc(mouthPos.x, mouthPos.y, 3, 0, Math.PI);
       ctx.fillStyle = '#4caf50';
@@ -226,13 +361,16 @@ class Ragdoll {
 // ─── BOX PROP ─────────────────────────────────────────────────────────────────
 class BoxProp {
   constructor(x, y, w, h, world, opts = {}) {
-    this.world   = world;
-    this.w       = w;
-    this.h       = h;
-    this.color   = opts.color   || '#8b6914';
-    this.outline = opts.outline || '#5a4009';
-    this.label   = opts.label   || '';
-    this.type    = opts.type    || 'crate';
+    this.world     = world;
+    this.w         = w;
+    this.h         = h;
+    this.color     = opts.color   || '#8b6914';
+    this.outline   = opts.outline || '#5a4009';
+    this.label     = opts.label   || '';
+    this.type      = opts.type    || 'crate';
+    this.health    = opts.health  || 100;
+    this.maxHealth = this.health;
+    this.cracks    = [];
     this.particles   = [];
     this.constraints = [];
     this._build(x, y, opts.fixed || false);
@@ -256,6 +394,41 @@ class BoxProp {
     mc(this.tl, this.br); mc(this.tr, this.bl); // diagonals
   }
 
+  takeDamage(amount, hitPos) {
+    if (this.health <= 0) return;
+    this.health -= amount;
+
+    if (hitPos) {
+      this.cracks.push({ x: hitPos.x, y: hitPos.y, r: 6 + Math.random() * 8 });
+    }
+
+    if (this.world.effects) {
+      const p = hitPos || this.tl.pos;
+      if (this.type === 'barrel') {
+        this.world.effects.hit(p.x, p.y);
+      } else {
+        this.world.effects.debris(p.x, p.y, this.color, 4, this.world.groundY);
+      }
+    }
+
+    if (this.health <= 0) {
+      this.shatter();
+    }
+  }
+
+  shatter() {
+    const c = this.center();
+    if (this.world.effects) {
+      if (this.type === 'barrel') {
+        this.world.effects.explosion(c.x, c.y, 140, { label: '💥 BARREL BOOM!' });
+      } else {
+        this.world.effects.debris(c.x, c.y, this.color, 12, this.world.groundY);
+        this.world.effects.pop(c.x, c.y, '💥 SHATTERED!', '#ff9800');
+      }
+    }
+    this.remove();
+  }
+
   draw(ctx) {
     ctx.save();
     ctx.beginPath();
@@ -273,7 +446,6 @@ class BoxProp {
     } else if (this.type === 'barrel') {
       ctx.fillStyle = this.color;
     } else {
-      // crate: woodgrain gradient
       const cx = (this.tl.pos.x + this.br.pos.x)/2;
       const cy = (this.tl.pos.y + this.br.pos.y)/2;
       const grd = ctx.createRadialGradient(cx-5, cy-5, 0, cx, cy, this.w*0.8);
@@ -285,6 +457,14 @@ class BoxProp {
     ctx.strokeStyle = this.outline;
     ctx.lineWidth = 2;
     ctx.stroke();
+
+    // Cracks
+    for (const crack of this.cracks) {
+      ctx.beginPath();
+      ctx.arc(crack.x, crack.y, crack.r, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fill();
+    }
 
     // Crate inner X detail
     if (this.type === 'crate') {
@@ -311,6 +491,16 @@ class BoxProp {
         ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(rp.x, rp.y);
         ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth=3; ctx.stroke();
       });
+    }
+
+    // Health bar
+    if (this.health < this.maxHealth && this.type !== 'platform') {
+      const c = this.center();
+      const pct = Math.max(0, this.health / this.maxHealth);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(c.x - 16, c.y - this.h/2 - 12, 32, 4);
+      ctx.fillStyle = '#4ade80';
+      ctx.fillRect(c.x - 16, c.y - this.h/2 - 12, 32 * pct, 4);
     }
     ctx.restore();
   }

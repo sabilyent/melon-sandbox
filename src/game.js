@@ -240,6 +240,19 @@ class Game {
     this.effects.explosion(x, y, blastR, { label: opts.label ?? 'BOOM!' });
     this.stats.exploded++;
 
+    // Deal explosion damage to all entities in range
+    const ePos = new Vec2(x, y);
+    for (const e of [...this.entities]) {
+      if (e === opts.self) continue;
+      const c = e.center ? e.center() : null;
+      if (!c) continue;
+      const d = Vec2.dist(ePos, c);
+      if (d < blastR + 35) {
+        const dmg = Math.round((1 - Math.min(d, blastR) / blastR) * 95) + 15;
+        if (e.takeDamage) e.takeDamage(dmg, c);
+      }
+    }
+
     // Chain-react other explosives in range
     for (const e of [...this.entities]) {
       if (e.isExplosive && e.alive && e !== opts.self) {
@@ -248,11 +261,6 @@ class Game {
           setTimeout(()=>this._explodeEntity(e), 100 + Math.random()*200);
         }
       }
-    }
-
-    // Check mines triggered by explosion force
-    for (const p of this.world.particles) {
-      if (p.tag === 'explosive') { /* handled by entity check above */ }
     }
   }
 
@@ -304,19 +312,23 @@ class Game {
       // Entity hit
       for (const e of this.entities) {
         if (!e.particles || e === proj) continue;
-        let hit = false;
+        let hitParticle = null;
         for (const ep of e.particles) {
-          if (Vec2.dist(pp, ep.pos) < proj.radius + ep.radius + 2) { hit = true; break; }
+          if (Vec2.dist(pp, ep.pos) < proj.radius + ep.radius + 3) { hitParticle = ep; break; }
         }
-        if (hit) {
+        if (hitParticle) {
           if (proj.isRocket) {
             this._explode(pp.x, pp.y, 160, 13, { label:'🚀 DIRECT HIT!' });
-            this._removeEntity(e);
           } else {
-            // Apply bullet impulse
+            // Apply bullet impulse & deal damage with blood spurts/fracture
             const dir = proj.particle.velocity().norm();
-            for (const ep of e.particles) ep.addVelocity(dir.mul(0.08 / ep.mass));
+            for (const ep of e.particles) ep.addVelocity(dir.mul(0.12 / ep.mass));
             this.effects.hit(pp.x, pp.y);
+
+            if (e.takeDamage) {
+              const dmg = Math.floor(25 + Math.random() * 30);
+              e.takeDamage(dmg, pp, hitParticle);
+            }
           }
           proj.remove(this.world);
           break;
@@ -634,8 +646,9 @@ class Game {
     for (const p of this.projectiles) p.update(dt);
     this.projectiles = this.projectiles.filter(p => p.alive);
 
-    // Update explosives
+    // Update entities (Ragdoll standing balance, health, props damage, explosives)
     for (const e of [...this.entities]) {
+      if (e.update) e.update(dt);
       if (e.isExplosive && e.alive) {
         const shouldExplode = e.update(dt);
         if (shouldExplode) {
@@ -645,7 +658,6 @@ class Game {
         }
       }
       if (e.type === 'fire' && e.update) {
-        const dead = e.update(dt);
         e.checkHits && e.checkHits(this.world.particles, (...a)=>this._explode(...a));
       }
     }

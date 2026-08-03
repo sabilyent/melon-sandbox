@@ -743,12 +743,25 @@ class Explosive {
       for (let i=0;i<8;i++){
         const a=i/8*Math.PI*2;
         ctx.beginPath();
-        ctx.moveTo(p.pos.x+Math.cos(a)*10, p.pos.y+Math.sin(a)*10);
+        ctx.moveTo(p.pos.x+Math.cos(a)*10, p.pos.y+Math.sin(a)*16);
         ctx.lineTo(p.pos.x+Math.cos(a)*16, p.pos.y+Math.sin(a)*16);
         ctx.strokeStyle='#b71c1c'; ctx.lineWidth=2; ctx.stroke();
       }
     }
+
+    // Draw timer text if grenade / timed explosive
+    if (isFinite(this.timer) && this.timer > 0) {
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#ff3d00';
+      ctx.textAlign = 'center';
+      ctx.fillText(this.timer.toFixed(1) + 's', p.pos.x, p.pos.y - 14);
+    }
+
     ctx.restore();
+  }
+
+  center() {
+    return this.particle ? this.particle.pos.clone() : new Vec2();
   }
 
   remove() {

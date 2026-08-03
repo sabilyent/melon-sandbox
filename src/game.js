@@ -648,15 +648,17 @@ class Game {
 
     // Update entities (Ragdoll standing balance, health, props damage, explosives)
     for (const e of [...this.entities]) {
-      if (e.update) e.update(dt);
       if (e.isExplosive && e.alive) {
         const shouldExplode = e.update(dt);
         if (shouldExplode) {
-          const c = e.center();
-          this._explode(c.x, c.y, e.radius, e.force, { self: e });
+          const c = e.center ? e.center() : (e.particle ? e.particle.pos : new Vec2());
+          this._explode(c.x, c.y, e.radius, e.force, { self: e, label: '💥 GRENADE!' });
           this._removeEntity(e);
         }
+      } else if (e.update) {
+        e.update(dt);
       }
+
       if (e.type === 'fire' && e.update) {
         e.checkHits && e.checkHits(this.world.particles, (...a)=>this._explode(...a));
       }

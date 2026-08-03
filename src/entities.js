@@ -44,7 +44,7 @@ class Ragdoll {
     return p;
   }
 
-  _c(a, b, s = 0.95, breakRatio = 2.4) {
+  _c(a, b, s = 0.95, breakRatio = 1.35) {
     const c = new DistConstraint(a, b, null, s);
     c.breakAt = breakRatio;
     this.constraints.push(c);
@@ -79,44 +79,44 @@ class Ragdoll {
     this.footR   = this._p(  14,  68,  6, 0.8);
 
     // Spine constraints
-    this._c(this.head,  this.neck,  0.97, 2.2);
-    this._c(this.neck,  this.chest, 0.97, 2.2);
-    this._c(this.chest, this.belly, 0.95, 2.5);
-    this._c(this.belly, this.hips,  0.95, 2.5);
+    this.c_head_neck  = this._c(this.head,  this.neck,  0.97, 1.35);
+    this.c_neck_chest = this._c(this.neck,  this.chest, 0.97, 1.35);
+    this.c_chest_belly= this._c(this.chest, this.belly, 0.95, 1.40);
+    this.c_belly_hips = this._c(this.belly, this.hips,  0.95, 1.40);
 
     // Shoulder girdle
-    this._c(this.neck,  this.shlL, 0.95, 2.3);
-    this._c(this.neck,  this.shlR, 0.95, 2.3);
-    this._c(this.shlL,  this.shlR, 0.90, 2.5);
-    this._c(this.chest, this.shlL, 0.55, 2.5);
-    this._c(this.chest, this.shlR, 0.55, 2.5);
+    this.c_neck_shlL  = this._c(this.neck,  this.shlL, 0.95, 1.35);
+    this.c_neck_shlR  = this._c(this.neck,  this.shlR, 0.95, 1.35);
+    this._c(this.shlL,  this.shlR, 0.90, 1.5);
+    this._c(this.chest, this.shlL, 0.55, 1.5);
+    this._c(this.chest, this.shlR, 0.55, 1.5);
 
     // Arms
-    this._c(this.shlL, this.elbL, 0.95, 2.2);
-    this._c(this.shlR, this.elbR, 0.95, 2.2);
-    this._c(this.elbL, this.wrsL, 0.95, 2.2);
-    this._c(this.elbR, this.wrsR, 0.95, 2.2);
+    this.c_shlL_elbL  = this._c(this.shlL, this.elbL, 0.95, 1.35);
+    this.c_shlR_elbR  = this._c(this.shlR, this.elbR, 0.95, 1.35);
+    this.c_elbL_wrsL  = this._c(this.elbL, this.wrsL, 0.95, 1.35);
+    this.c_elbR_wrsR  = this._c(this.elbR, this.wrsR, 0.95, 1.35);
 
     // Hip girdle
-    this._c(this.hips,  this.hipL, 0.97, 2.5);
-    this._c(this.hips,  this.hipR, 0.97, 2.5);
-    this._c(this.hipL,  this.hipR, 0.97, 2.5);
-    this._c(this.belly, this.hipL, 0.50, 2.5);
-    this._c(this.belly, this.hipR, 0.50, 2.5);
+    this.c_hips_hipL  = this._c(this.hips,  this.hipL, 0.97, 1.40);
+    this.c_hips_hipR  = this._c(this.hips,  this.hipR, 0.97, 1.40);
+    this._c(this.hipL,  this.hipR, 0.97, 1.5);
+    this._c(this.belly, this.hipL, 0.50, 1.5);
+    this._c(this.belly, this.hipR, 0.50, 1.5);
 
     // Legs
-    this._c(this.hipL,  this.kneeL, 0.95, 2.3);
-    this._c(this.hipR,  this.kneeR, 0.95, 2.3);
-    this._c(this.kneeL, this.footL, 0.95, 2.3);
-    this._c(this.kneeR, this.footR, 0.95, 2.3);
+    this.c_hipL_kneeL = this._c(this.hipL,  this.kneeL, 0.95, 1.35);
+    this.c_hipR_kneeR = this._c(this.hipR,  this.kneeR, 0.95, 1.35);
+    this.c_kneeL_footL= this._c(this.kneeL, this.footL, 0.95, 1.35);
+    this.c_kneeR_footR= this._c(this.kneeR, this.footR, 0.95, 1.35);
 
     // Cross-braces for torso rigidity
-    this._c(this.neck,  this.belly, 0.40, 3.0);
-    this._c(this.chest, this.hips,  0.40, 3.0);
-    this._c(this.shlL,  this.belly, 0.25, 3.0);
-    this._c(this.shlR,  this.belly, 0.25, 3.0);
-    this._c(this.hipL,  this.kneeR, 0.20, 3.0);
-    this._c(this.hipR,  this.kneeL, 0.20, 3.0);
+    this._c(this.neck,  this.belly, 0.40, 1.8);
+    this._c(this.chest, this.hips,  0.40, 1.8);
+    this._c(this.shlL,  this.belly, 0.25, 1.8);
+    this._c(this.shlR,  this.belly, 0.25, 1.8);
+    this._c(this.hipL,  this.kneeR, 0.20, 1.8);
+    this._c(this.hipR,  this.kneeL, 0.20, 1.8);
   }
 
   update(dt) {
@@ -160,7 +160,7 @@ class Ragdoll {
     chest.pos.x += diffX * 0.05;
 
     // Feet ground standing support
-    const groundY = this.world.groundY;
+    const groundY = this._getSupportSurfaceY(footL ? footL.pos : hips.pos);
     if (footL && footR) {
       const feetGrounded = (footL.pos.y >= groundY - 14) || (footR.pos.y >= groundY - 14);
       if (feetGrounded) {
@@ -178,12 +178,28 @@ class Ragdoll {
     }
   }
 
+  _getSupportSurfaceY(footPos) {
+    let surfaceY = this.world.groundY;
+    if (this.world.boxes) {
+      for (const box of this.world.boxes) {
+        if (box === this) continue;
+        const topY = Math.min(box.tl.pos.x, box.tl.pos.y, box.tr.pos.y);
+        const minX = Math.min(box.tl.pos.x, box.bl.pos.x) - 12;
+        const maxX = Math.max(box.tr.pos.x, box.br.pos.x) + 12;
+        if (footPos.x >= minX && footPos.x <= maxX && topY < surfaceY && footPos.y <= topY + 24) {
+          surfaceY = topY;
+        }
+      }
+    }
+    return surfaceY;
+  }
+
   takeDamage(amount, hitPos, hitParticle) {
     if (this.health <= 0) return;
     this.health -= amount;
 
     // Record visual blood stain on limb
-    const hp = hitPos || (hitParticle ? hitParticle.pos : this.head.pos);
+    const hp = hitPos || (hitParticle ? hitParticle.pos : (this.head ? this.head.pos : new Vec2()));
     this.damageStains.push({
       x: hp.x, y: hp.y, r: 4 + Math.random() * 5, color: this.bloodColor
     });
@@ -201,7 +217,7 @@ class Ragdoll {
     if (this.health <= 0) {
       this.alive = false;
       this.stunTimer = Infinity;
-      if (this.world.effects) {
+      if (this.world.effects && this.head) {
         this.world.effects.pop(this.head.pos.x, this.head.pos.y - 20, '☠ DEAD!', '#f44336');
       }
     }
@@ -209,8 +225,20 @@ class Ragdoll {
 
   draw(ctx) {
     const c = this.colors;
-    const seg = (a, b, w, col, cap = 'round') => {
+    const seg = (a, b, constraint, w, col, cap = 'round') => {
       if (!a || !b) return;
+      // Do not draw segment if joint is broken or over-stretched!
+      if (constraint) {
+        if (constraint.broken || Vec2.dist(a.pos, b.pos) > constraint.restLen * 1.45) {
+          constraint.broken = true;
+          // Draw severed blood stump
+          ctx.beginPath();
+          ctx.arc(a.pos.x, a.pos.y, w * 0.45, 0, Math.PI * 2);
+          ctx.fillStyle = this.bloodColor;
+          ctx.fill();
+          return;
+        }
+      }
       ctx.beginPath();
       ctx.moveTo(a.pos.x, a.pos.y);
       ctx.lineTo(b.pos.x, b.pos.y);
@@ -224,14 +252,14 @@ class Ragdoll {
     ctx.shadowBlur = 0;
 
     // Legs (behind body)
-    seg(this.hipL, this.kneeL, 13, c.pants);
-    seg(this.hipR, this.kneeR, 13, c.pants);
-    seg(this.kneeL, this.footL, 11, c.pants);
-    seg(this.kneeR, this.footR, 11, c.pants);
+    seg(this.hipL, this.kneeL, this.c_hipL_kneeL, 13, c.pants);
+    seg(this.hipR, this.kneeR, this.c_hipR_kneeR, 13, c.pants);
+    seg(this.kneeL, this.footL, this.c_kneeL_footL, 11, c.pants);
+    seg(this.kneeR, this.footR, this.c_kneeR_footR, 11, c.pants);
 
     // Shoes (foot caps)
-    const drawShoe = (foot, knee) => {
-      if (!foot || !knee) return;
+    const drawShoe = (foot, knee, constraint) => {
+      if (!foot || !knee || (constraint && constraint.broken)) return;
       const dir = foot.pos.sub(knee.pos).norm().mul(6);
       ctx.beginPath();
       ctx.moveTo(foot.pos.x, foot.pos.y);
@@ -241,23 +269,23 @@ class Ragdoll {
       ctx.lineCap = 'round';
       ctx.stroke();
     };
-    drawShoe(this.footL, this.kneeL);
-    drawShoe(this.footR, this.kneeR);
+    drawShoe(this.footL, this.kneeL, this.c_kneeL_footL);
+    drawShoe(this.footR, this.kneeR, this.c_kneeR_footR);
 
     // Torso
-    seg(this.neck, this.hips, 24, c.shirt);
+    seg(this.neck, this.hips, this.c_neck_chest, 24, c.shirt);
 
-    // Shoulder to shoulder
-    seg(this.shlL, this.shlR, 20, c.shirt);
+    // Shoulders
+    seg(this.shlL, this.shlR, null, 20, c.shirt);
 
     // Arms
-    seg(this.shlL, this.elbL, 9, c.shirt);
-    seg(this.shlR, this.elbR, 9, c.shirt);
-    seg(this.elbL, this.wrsL, 8, c.skin);
-    seg(this.elbR, this.wrsR, 8, c.skin);
+    seg(this.shlL, this.elbL, this.c_shlL_elbL, 9, c.shirt);
+    seg(this.shlR, this.elbR, this.c_shlR_elbR, 9, c.shirt);
+    seg(this.elbL, this.wrsL, this.c_elbL_wrsL, 8, c.skin);
+    seg(this.elbR, this.wrsR, this.c_elbR_wrsR, 8, c.skin);
 
     // Head
-    if (this.head) {
+    if (this.head && (!this.c_head_neck || !this.c_head_neck.broken)) {
       ctx.beginPath();
       ctx.arc(this.head.pos.x, this.head.pos.y, 14, 0, Math.PI * 2);
       ctx.fillStyle   = c.skin;

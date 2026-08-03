@@ -109,18 +109,18 @@ melon-sandbox/
 ## 🗺️ Development Roadmap
 
 - [x] Project scaffolding & documentation
-- [ ] Physics engine (rigid body + verlet integration)
-- [ ] Canvas rendering pipeline
-- [ ] Ragdoll character with joints
-- [ ] Mouse grab & interaction
-- [ ] Item palette UI
-- [ ] Weapons & projectiles
-- [ ] Props & environment objects
-- [ ] Explosions & particle effects
-- [ ] Camera pan & zoom
-- [ ] Save/Load scenes
-- [ ] Sound effects (Web Audio API)
-- [ ] Mobile / touch support
+- [x] Physics engine (rigid body + verlet integration)
+- [x] Canvas rendering pipeline
+- [x] Ragdoll character with joints
+- [x] Mouse grab & interaction
+- [x] Item palette UI
+- [x] Weapons & projectiles
+- [x] Props & environment objects
+- [x] Explosions & particle effects
+- [x] Camera pan & zoom
+- [x] Save/Load scenes
+- [x] Sound effects (Web Audio API)
+- [x] Mobile / touch support
 
 ---
 

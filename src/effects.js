@@ -301,12 +301,78 @@ class DebrisParticle {
   get dead() { return this.life <= 0; }
 }
 
+// ─── SOUND EFFECTS (Web Audio API Synthesizer) ───────────────────────────────
+class SoundFX {
+  constructor() {
+    this.ctx = null;
+  }
+
+  init() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  explosion() {
+    this.init(); if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(25, now + 0.5);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      osc.start(now); osc.stop(now + 0.5);
+    } catch(e){}
+  }
+
+  hit() {
+    this.init(); if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.1);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      osc.start(now); osc.stop(now + 0.1);
+    } catch(e){}
+  }
+
+  snap() {
+    this.init(); if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(650, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+      osc.connect(gain); gain.connect(this.ctx.destination);
+      osc.start(now); osc.stop(now + 0.08);
+    } catch(e){}
+  }
+}
+
 // ─── EFFECTS MANAGER ──────────────────────────────────────────────────────────
 class EffectsManager {
   constructor() {
     this.effects = [];
     this.stains  = []; // persistent ground stains
     this.shake   = new ScreenShake();
+    this.sound   = new SoundFX();
   }
 
   explosion(x, y, radius, opts = {}) {
@@ -336,6 +402,7 @@ class EffectsManager {
     }));
 
     this.shake.add(Math.min(radius * 0.15, 25));
+    this.sound.explosion();
   }
 
   hit(x, y) {
@@ -348,6 +415,7 @@ class EffectsManager {
       }));
     }
     this.shake.add(2);
+    this.sound.hit();
   }
 
   blood(x, y, color = '#d32f2f', count = 12, groundY = 560) {
@@ -361,6 +429,7 @@ class EffectsManager {
         this.stains.push(new BloodStain(x + (Math.random()-0.5)*30, groundY, color, 4 + Math.random()*8));
       }
     }
+    this.sound.hit();
   }
 
   fracture(x, y, label = '🦴 PATAH!') {
@@ -373,6 +442,7 @@ class EffectsManager {
       }));
     }
     this.shake.add(4);
+    this.sound.snap();
   }
 
   debris(x, y, color = '#8b6914', count = 10, groundY = 560) {

@@ -34,7 +34,7 @@ class Particle {
     this.mass        = mass;
     this.fixed       = fixed;
     this.group       = null;   // entity reference — skip same-group collision
-    this.restitution = 0.25;
+    this.restitution = 0.28;
     this.friction    = 0.992;  // air damping
     this.groundFrict = 0.82;   // ground sliding friction
     this.id          = ++Particle._id;
@@ -93,6 +93,7 @@ class World {
   constructor() {
     this.particles   = [];
     this.constraints = [];
+    this.boxes       = [];    // platforms, crates, barrels
     this.gravity     = 750;   // px/s²
     this.groundY     = 560;   // floor Y in world coords
     this.leftWall    = -4000;
@@ -120,6 +121,7 @@ class World {
       for (let i = 0; i < this.iterations; i++) {
         for (const c of this.constraints) c.solve();
         this._groundCollision();
+        this._boxCollision();
         this._particleCollision();
       }
     }
@@ -142,9 +144,65 @@ class World {
       if (p.pos.x + p.radius > this.rightWall) {
         const vel = p.velocity();
         p.pos.x   = this.rightWall - p.radius;
-        p.prev.x  = p.pos.x + vel.x * p.restitution;
+        p.prev.x  = p.pos.x - vel.x * p.restitution;
       }
       if (p.pos.y < -3000) { p.pos.y = -3000; p.prev.y = p.pos.y; }
+    }
+  }
+
+  _boxCollision() {
+    if (!this.boxes || !this.boxes.length) return;
+
+    for (const box of this.boxes) {
+      if (!box.tl || !box.tr || !box.br || !box.bl) continue;
+
+      const minX = Math.min(box.tl.pos.x, box.tr.pos.x, box.br.pos.x, box.bl.pos.x);
+      const maxX = Math.max(box.tl.pos.x, box.tr.pos.x, box.br.pos.x, box.bl.pos.x);
+      const minY = Math.min(box.tl.pos.y, box.tr.pos.y, box.br.pos.y, box.bl.pos.y);
+      const maxY = Math.max(box.tl.pos.y, box.tr.pos.y, box.br.pos.y, box.bl.pos.y);
+
+      for (const p of this.particles) {
+        if (p.fixed || p.group === box) continue;
+
+        if (p.pos.x + p.radius < minX - 4 || p.pos.x - p.radius > maxX + 4 ||
+            p.pos.y + p.radius < minY - 4 || p.pos.y - p.radius > maxY + 4) {
+          continue;
+        }
+
+        const topY = minY;
+        const vel  = p.velocity();
+
+        // Landing on top surface of platform / box
+        if (p.pos.x >= minX - 3 && p.pos.x <= maxX + 3 &&
+            p.prev.y + p.radius <= topY + 14 && p.pos.y + p.radius >= topY) {
+          p.pos.y  = topY - p.radius;
+          p.prev.y = p.pos.y + vel.y * p.restitution;
+          p.prev.x = p.pos.x - vel.x * p.groundFrict;
+        }
+        // Inside box penetration resolution
+        else if (p.pos.x > minX && p.pos.x < maxX && p.pos.y > minY && p.pos.y < maxY) {
+          const dTop = Math.abs(p.pos.y - minY);
+          const dBot = Math.abs(p.pos.y - maxY);
+          const dLft = Math.abs(p.pos.x - minX);
+          const dRgt = Math.abs(p.pos.x - maxX);
+          const minD = Math.min(dTop, dBot, dLft, dRgt);
+
+          if (minD === dTop) {
+            p.pos.y  = minY - p.radius;
+            p.prev.y = p.pos.y + vel.y * p.restitution;
+            p.prev.x = p.pos.x - vel.x * p.groundFrict;
+          } else if (minD === dBot) {
+            p.pos.y  = maxY + p.radius;
+            p.prev.y = p.pos.y - vel.y * p.restitution;
+          } else if (minD === dLft) {
+            p.pos.x  = minX - p.radius;
+            p.prev.x = p.pos.x + vel.x * p.restitution;
+          } else if (minD === dRgt) {
+            p.pos.x  = maxX + p.radius;
+            p.prev.x = p.pos.x - vel.x * p.restitution;
+          }
+        }
+      }
     }
   }
 
@@ -199,7 +257,8 @@ class World {
   removeGroup(group) {
     this.particles   = this.particles.filter(p => p.group !== group);
     this.constraints = this.constraints.filter(c => c.a.group !== group && c.b.group !== group);
+    this.boxes       = this.boxes.filter(b => b !== group);
   }
 
-  clear() { this.particles = []; this.constraints = []; }
+  clear() { this.particles = []; this.constraints = []; this.boxes = []; }
 }

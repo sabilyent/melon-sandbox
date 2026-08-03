@@ -392,6 +392,7 @@ class BoxProp {
     mc(this.tl, this.tr); mc(this.tr, this.br);
     mc(this.br, this.bl); mc(this.bl, this.tl);
     mc(this.tl, this.br); mc(this.tr, this.bl); // diagonals
+    if (this.world.boxes) this.world.boxes.push(this);
   }
 
   takeDamage(amount, hitPos) {
